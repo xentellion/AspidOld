@@ -6,16 +6,17 @@ namespace Aspid
 {
     class Config
     {
-        private const string LinuxPrefix = "/home/xent/Aspid/";
-        private static string configFolder = "Resources";
+        private const string LinuxPrefix = "/home/xentellion/Aspid1/Data/";
+        private static string configFolder = "C:/Data";
         private const string configFile = "Load.json";
+        private const string mydb = "AspidDataBase.db";
 
         public static BotConfig bot;
 
         static Config()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                configFolder = LinuxPrefix + configFolder;
+                configFolder = LinuxPrefix;
 
             if (!Directory.Exists(configFolder))
                 Directory.CreateDirectory(configFolder);
@@ -31,6 +32,11 @@ namespace Aspid
                 string json = File.ReadAllText(configFolder + "/" + configFile);
                 bot = JsonConvert.DeserializeObject<BotConfig>(json);
             }
+
+            if(!File.Exists(configFolder + "/" + mydb))
+            {
+                File.Create(configFolder + "/" + mydb);
+            }
         }
     }
 
@@ -40,10 +46,6 @@ namespace Aspid
 
         public string prefix;
 
-        public ulong mainGuild;
-
         public int deadPeople;
-
-        public int connectionString;
     }
 }

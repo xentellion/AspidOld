@@ -1,9 +1,11 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Npgsql;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace Aspid
@@ -13,16 +15,11 @@ namespace Aspid
         internal static DiscordSocketClient _client;
         CommandHandler _handler;
 
-        internal static string connectionString =
+        const string LinuxPrefix = "/home/xentellion/Aspid1/Data/AspidDataBase.db";
 
-                "Host=localhost;" +
-                "Port=5432;" +
-                "Database=aspid_user_database;" +
-                "Username=postgres;" +
-                "Password=admin;"
-                ;
+        internal static string connectionString = "C:/Data/AspidDataBase.db";
 
-        internal static NpgsqlConnection npgSqlConnection;    
+        internal static SqliteConnection sqliteConnection;
 
         static OverwritePermissions permissions = new OverwritePermissions(PermValue.Inherit, PermValue.Inherit, PermValue.Deny, PermValue.Inherit, PermValue.Deny, PermValue.Deny);
 
@@ -30,6 +27,31 @@ namespace Aspid
 
         public async Task StartAsync()
         {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (!File.Exists(LinuxPrefix))
+                {
+                    File.Create(LinuxPrefix);
+                    return;
+                }
+                sqliteConnection = new SqliteConnection
+                {
+                    ConnectionString = "Filename = " + LinuxPrefix
+                };
+            }
+            else
+            {
+                if (!File.Exists(connectionString))
+                {
+                    File.Create(connectionString);
+                    return;
+                }
+                sqliteConnection = new SqliteConnection
+                {
+                    ConnectionString = "Filename = " + connectionString
+                };
+            }
+
             if (Config.bot.token == "" || Config.bot.token == null) return;
             _client = new DiscordSocketClient(new DiscordSocketConfig
             {
@@ -38,15 +60,8 @@ namespace Aspid
 
             _client.Log += Log;
 
-            npgSqlConnection = new NpgsqlConnection
-            {
-                ConnectionString = connectionString
-            };
-
-            npgSqlConnection.Open();
-            Console.WriteLine(DateTime.Now.TimeOfDay + " Connected to PostgreSQL database " + npgSqlConnection.Database);
-
-            //_client.GuildAvailable += CheckLanguage();
+            sqliteConnection.Open();
+            Console.WriteLine(DateTime.Now.TimeOfDay + " Connected to SQLite database " + sqliteConnection.Database);
 
             _client.Ready += Modules.Repeater.Muted;
 
@@ -79,23 +94,23 @@ namespace Aspid
             {
                 try
                 {
-                    NpgsqlCommand check = new NpgsqlCommand("SELECT * FROM guild_" + guild.Id, npgSqlConnection);
-                    NpgsqlDataReader reader = check.ExecuteReader();
+                    SqliteCommand check = new SqliteCommand("SELECT * FROM guild_" + guild.Id, sqliteConnection);
+                    SqliteDataReader reader = check.ExecuteReader();
                     reader.Close();
                 }
                 catch
                 {
-                    NpgsqlCommand addTable = new NpgsqlCommand(Queries.CreateTable(guild.Id), npgSqlConnection);
+                    SqliteCommand addTable = new SqliteCommand(Queries.CreateTable(guild.Id), sqliteConnection);
                     addTable.ExecuteNonQuery();
                 }
 
                 foreach(SocketGuildUser user in guild.Users)
                 {
-                    NpgsqlCommand check = new NpgsqlCommand(Queries.GetUser(guild.Id, user.Id), npgSqlConnection);
+                    SqliteCommand check = new SqliteCommand(Queries.GetUser(guild.Id, user.Id), sqliteConnection);
                     long i = Convert.ToInt64(check.ExecuteScalar());
                     if (i == 0)
                     {
-                        NpgsqlCommand addUser = new NpgsqlCommand(Queries.AddUser(guild.Id, user.Id), npgSqlConnection);
+                        SqliteCommand addUser = new SqliteCommand(Queries.AddUser(guild.Id, user.Id), sqliteConnection);
                         addUser.ExecuteNonQuery();
                     }
                 }
@@ -107,7 +122,7 @@ namespace Aspid
 
         public async Task AddRoles(SocketGuild arg)
         {
-            NpgsqlCommand addTable = new NpgsqlCommand(Queries.CreateTable(arg.Id), npgSqlConnection);
+            SqliteCommand addTable = new SqliteCommand(Queries.CreateTable(arg.Id), sqliteConnection);
             addTable.ExecuteNonQuery();
 
             IEnumerable<SocketRole> role = arg.Roles;
@@ -156,7 +171,7 @@ namespace Aspid
 
         static Task FondGuild() //для постинга аспидов
         {
-            SocketGuild f = _client.GetGuild(Config.bot.mainGuild);
+            SocketGuild f = _client.GetGuild(567767402062807055);
             Modules.Global.channel = (ISocketMessageChannel)f.GetChannel(567770314642030592);
             return Task.CompletedTask;
         }
@@ -177,12 +192,12 @@ namespace Aspid
                 .WithColor(Color.DarkGreen)
                 .WithCurrentTimestamp()
                 .WithThumbnailUrl(arg.GetAvatarUrl())
-                .WithDescription($"**{(arg as IUser).Username}** прибыл(а) на сервер")
-                .WithTitle("Кто-то появился на пороге...");
+                .WithDescription("**" + (arg as IUser).Username + Language(63, arg.Guild.Id))
+                .WithTitle(Language(64, arg.Guild.Id));
             await arg.Guild.DefaultChannel.SendMessageAsync("", false, builder1.Build());
 
             var channel = _client.GetChannel(567770314642030592) as SocketTextChannel;
-            if(arg.Guild.Id == Config.bot.mainGuild)
+            if(arg.Guild.Id == 567767402062807055)
             {
                 EmbedBuilder builder = new EmbedBuilder();
                 builder
@@ -193,7 +208,7 @@ namespace Aspid
                 await channel.SendMessageAsync("", false, builder.Build());
             }
 
-            NpgsqlCommand npgSqlCommand = new NpgsqlCommand(Queries.AddUser(arg.Guild.Id, arg.Id), npgSqlConnection);
+            SqliteCommand npgSqlCommand = new SqliteCommand(Queries.AddUser(arg.Guild.Id, arg.Id), sqliteConnection);
             npgSqlCommand.ExecuteNonQuery();
         }
 
@@ -204,13 +219,13 @@ namespace Aspid
                 .WithColor(Color.Red)
                 .WithCurrentTimestamp()
                 .WithThumbnailUrl(arg.GetAvatarUrl())
-                .WithDescription($"**{(arg as IUser).Username}** покинул(а) сервер")
-                .WithTitle("Чьи-то шаги затихают вдали...");
+                .WithDescription($"**" + (arg as IUser).Username + Language(65, arg.Guild.Id))
+                .WithTitle(Language(66, arg.Guild.Id));
             await arg.Guild.DefaultChannel.SendMessageAsync("", false, builder.Build());
 
             try
             {
-                NpgsqlCommand delUser = new NpgsqlCommand(Queries.DeleteUser(arg.Guild.Id, arg.Id), npgSqlConnection);
+                SqliteCommand delUser = new SqliteCommand(Queries.DeleteUser(arg.Guild.Id, arg.Id), sqliteConnection);
                 delUser.ExecuteNonQuery();
             }
             catch { }
@@ -224,11 +239,11 @@ namespace Aspid
         {
             if (!reaction.User.Value.IsBot)
             {
-                if (Modules.Global.HelpHandler != null && reaction.MessageId == Modules.Global.HelpHandler.Id)
+                if (Modules.Global.HelpHandler.Item1 != null && reaction.MessageId == Modules.Global.HelpHandler.Item1.Id)
                 {
                     if (reaction.Emote.Name == "◀" || reaction.Emote.Name == "▶")
                     {
-                        Modules.Global.HelpHandler.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
+                        Modules.Global.HelpHandler.Item1.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
                         Modules.Ping.Turn(reaction.Emote.Name);
                     }
                 }
@@ -248,6 +263,15 @@ namespace Aspid
                          where a.Name == oof
                          select a;
             return result.FirstOrDefault();
+        }
+
+        string Language(int id, ulong guild)
+        {
+            switch (_client.GetGuild(guild).VoiceRegionId)
+            {
+                case "russia": return Modules.Languages.Russian.texts[id];
+                default: return Modules.Languages.English.texts[id];
+            }
         }
 
         #endregion

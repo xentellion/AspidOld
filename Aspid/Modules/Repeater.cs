@@ -1,5 +1,5 @@
 ﻿using Discord;
-using Npgsql;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -19,8 +19,8 @@ namespace Aspid.Modules
         
         static bool canSend = true;
 
-        static NpgsqlCommand dePunish;
-        static NpgsqlCommand deMute;
+        static SqliteCommand dePunish;
+        static SqliteCommand deMute;
 
         internal static Task Muted()
         {
@@ -54,20 +54,20 @@ namespace Aspid.Modules
         {
             foreach (Discord.WebSocket.SocketGuild guild in Program._client.Guilds)
             {
-                NpgsqlCommand reduceMute = new NpgsqlCommand(Queries.PenaltyHandler(guild.Id), Program.npgSqlConnection);
+                SqliteCommand reduceMute = new SqliteCommand(Queries.PenaltyHandler(guild.Id), Program.sqliteConnection);
                 reduceMute.ExecuteNonQuery();
 
-                dePunish = new NpgsqlCommand(Queries.GetPunished(guild.Id), Program.npgSqlConnection);
-                deMute = new NpgsqlCommand(Queries.GetMuted(guild.Id), Program.npgSqlConnection);
+                dePunish = new SqliteCommand(Queries.GetPunished(guild.Id), Program.sqliteConnection);
+                deMute = new SqliteCommand(Queries.GetMuted(guild.Id), Program.sqliteConnection);
 
                 List<ulong> DePunished = new List<ulong>();
                 List<ulong> DeMuted = new List<ulong>();
 
-                using (NpgsqlDataReader reader = dePunish.ExecuteReader())
+                using (SqliteDataReader reader = dePunish.ExecuteReader())
                 {
                     foreach(DbDataRecord record in reader)
                     {
-                        ulong a = Convert.ToUInt64(record["ID"]);
+                        ulong a = Convert.ToUInt64(record["U_ID"]);
                         DePunished.Add(a);
                         await Ping.RemoveMute(guild.Id, a, "Punished");
                     }
@@ -76,19 +76,19 @@ namespace Aspid.Modules
 
                 if(DePunished.Count > 0)
                 {
-                    NpgsqlCommand dePun;
+                    SqliteCommand dePun;
                     foreach(ulong unit in DePunished)
                     {
-                        dePun = new NpgsqlCommand(Queries.RemovePunish(guild.Id, unit), Program.npgSqlConnection);
+                        dePun = new SqliteCommand(Queries.RemovePunish(guild.Id, unit), Program.sqliteConnection);
                         dePun.ExecuteNonQuery();
                     }
                 }
 
-                using (NpgsqlDataReader reader = deMute.ExecuteReader())
+                using (SqliteDataReader reader = deMute.ExecuteReader())
                 {
                     foreach (DbDataRecord record in reader)
                     {
-                        ulong a = Convert.ToUInt64(record["ID"]);
+                        ulong a = Convert.ToUInt64(record["U_ID"]);
                         DeMuted.Add(a);
                         await Ping.RemoveMute(guild.Id, a, "Muted");
                     }
@@ -97,10 +97,10 @@ namespace Aspid.Modules
 
                 if (DeMuted.Count > 0)
                 {
-                    NpgsqlCommand dePun;
+                    SqliteCommand dePun;
                     foreach (ulong unit in DeMuted)
                     {
-                        dePun = new NpgsqlCommand(Queries.RemoveMute(guild.Id, unit), Program.npgSqlConnection);
+                        dePun = new SqliteCommand(Queries.RemoveMute(guild.Id, unit), Program.sqliteConnection);
                         dePun.ExecuteNonQuery();
                     }
                 }

@@ -7,8 +7,8 @@ using System.Linq;
 using Discord.Rest;
 using System.Threading;
 using System.Collections.Generic;
-using Npgsql;
 using System.Data.Common;
+using Microsoft.Data.Sqlite;
 
 namespace Aspid.Modules
 {
@@ -32,7 +32,14 @@ namespace Aspid.Modules
             }
         }
 
-        //await Context.Channel.SendMessageAsync(Context.Guild.VoiceRegionId);
+        public string Language(int id)
+        {
+            switch (Context.Guild.VoiceRegionId)
+            {
+                case "russia":  return Languages.Russian.texts[id];
+                default:        return Languages.English.texts[id];    
+            }
+        }
 
         #region Shoot
 
@@ -47,19 +54,19 @@ namespace Aspid.Modules
 
             if (username.Roles.Contains(Context.Guild.Roles.FirstOrDefault(x => x.Name == "Punished")))
             {
-                await Context.Channel.SendMessageAsync("Таким хроническим самоубийцам нельзя давать в руки пистолет", false);
+                await Context.Channel.SendMessageAsync(Language(6), false);
                 return;
             }
 
             if (username.Roles.Contains(role))
             {
-                await Context.Channel.SendMessageAsync("Мертвецы не играют с удачей", false);
+                await Context.Channel.SendMessageAsync(Language(7), false);
                 return;
             }
 
-            Thread.Sleep(1000); await Context.Channel.SendMessageAsync("Вы взяли в руки револьвер", false);
-            Thread.Sleep(2000); await Context.Channel.SendMessageAsync("Вы проверили барабан и прокрутили его", false);
-            Thread.Sleep(2000); await Context.Channel.SendMessageAsync("Вы приложили револьвер к виску...", false);
+            Thread.Sleep(1000); await Context.Channel.SendMessageAsync(Language(0), false);
+            Thread.Sleep(2000); await Context.Channel.SendMessageAsync(Language(1), false);
+            Thread.Sleep(2000); await Context.Channel.SendMessageAsync(Language(2), false);
             Thread.Sleep(4000);
 
             Random rand = new Random();
@@ -69,10 +76,10 @@ namespace Aspid.Modules
                 counter++;
                 Config.bot.deadPeople++;
                 SocketUser user = Context.User;
-                await Context.Channel.SendMessageAsync($"Раздался выстрел и тело {user.Mention} с грохотом упало на пол", false);
+                await Context.Channel.SendMessageAsync(Language(3) + user.Mention + Language(4), false);
                 await (user as IGuildUser).AddRoleAsync(role);
             }
-            else await Context.Channel.SendMessageAsync("Осечка! Передайте пистолет другому. Пусть он тоже испытает удачу.", false);
+            else await Context.Channel.SendMessageAsync(Language(5), false);
         }
 
 
@@ -88,23 +95,23 @@ namespace Aspid.Modules
 
             if (message.IsBot)
             {
-                await MissMessage("*ОТ АСПИДОВ ТАК ПРОСТО НЕ ИЗБАВИТЬСЯ*"); breaker = true;
+                await MissMessage(Language(8)); breaker = true;
             }
             if (message == Context.User || message == null)
             {
-                await MissMessage("Стреляться вздумали? Не в мою смену"); breaker = true;
+                await MissMessage(Language(9)); breaker = true;
             }
             else if ((Context.User as SocketGuildUser).Roles.Contains(role1))
             {
-                await MissMessage("Мертвым пушки не предлагать"); breaker = true;
+                await MissMessage(Language(10)); breaker = true;
             }
             else if ((Context.User as SocketGuildUser).Roles.Contains(Context.Guild.Roles.FirstOrDefault(x => x.Name == "Punished")))
             {
-                await MissMessage("Таким мерзавцам нельзя давать в руки пистолет"); breaker = true;
+                await MissMessage(Language(11)); breaker = true;
             }
             else if (message.Roles.Contains(role1))
             {
-                await MissMessage("Вы стреляете в мертвое тело. Как будто убийства было недостаточно"); breaker = true;
+                await MissMessage(Language(12)); breaker = true;
             }
 
             if (breaker) return;
@@ -115,12 +122,12 @@ namespace Aspid.Modules
             {
                 counter++;
                 Config.bot.deadPeople++;
-                await Context.Channel.SendMessageAsync($"Вы застрелили {message.Mention}", false);
+                await Context.Channel.SendMessageAsync(Language(13) + message.Mention, false);
                 await (message as IGuildUser).AddRoleAsync(role1);
             }
             else
             {
-                await MissMessage("Промах! Какая досада <:PKHeh:575051447906074634>");
+                await MissMessage(Language(14) + "<:PKHeh:575051447906074634>");
             }
         }
 
@@ -163,7 +170,7 @@ namespace Aspid.Modules
                         await (a as IGuildUser).RemoveRoleAsync(role);
                 }
             }
-            await Context.Channel.SendMessageAsync($">>> {counter} человек было мертво\n\nВсего в мире умирали {Config.bot.deadPeople} раз \n", false);
+            await Context.Channel.SendMessageAsync(">>> " + counter + Language(15) + " " + Config.bot.deadPeople + " " + Language(16), false);
             counter = 0;
         }
 
@@ -174,12 +181,12 @@ namespace Aspid.Modules
         {
             var role = Context.Guild.Roles.FirstOrDefault(x => x.Name == "Punished");
 
-            NpgsqlCommand command = new NpgsqlCommand(Queries.AddPunish(Context.Guild.Id, user.Id), Program.npgSqlConnection);
+            SqliteCommand command = new SqliteCommand(Queries.AddPunish(Context.Guild.Id, user.Id), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await (user as IGuildUser).AddRoleAsync(role);
 
-            await Context.Channel.SendMessageAsync($"Внезапно ворвавшиеся в комнату кингсмолды отбирают у {user.Mention} револьвер, попутно наблюдая как он самостоятельно падает на их ноги, когти и мебель в комнате, после чего уходят", false);
+            await Context.Channel.SendMessageAsync(Language(17) + user.Mention + Language(18), false);
         }
 
         #endregion
@@ -192,9 +199,9 @@ namespace Aspid.Modules
             await Check();
             Hero character = new Hero();
 
-            NpgsqlCommand getHero = new NpgsqlCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.npgSqlConnection);
+            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.sqliteConnection);
 
-            using (NpgsqlDataReader reader = getHero.ExecuteReader())
+            using (SqliteDataReader reader = getHero.ExecuteReader())
             {
                 if (reader.HasRows)
                 {
@@ -210,7 +217,7 @@ namespace Aspid.Modules
                 }
                 else
                 {
-                    await Context.Channel.SendMessageAsync("Такого персонажа нет");
+                    await Context.Channel.SendMessageAsync(Language(19));
                     return;
                 }
             }
@@ -220,7 +227,7 @@ namespace Aspid.Modules
             builder
                 .WithColor(Color.DarkBlue)
                 .WithTitle(character.name)
-                .WithDescription(character.description + "\n\n Автор - " + user.Mention);
+                .WithDescription(character.description + Language(20) + user.Mention);
             if (character.image != null)
             {
                 builder.WithImageUrl(character.image);
@@ -235,9 +242,9 @@ namespace Aspid.Modules
 
             List<Hero> characters = new List<Hero>();
 
-            NpgsqlCommand getHero = new NpgsqlCommand(Queries.GetCharacter(Context.Guild.Id, user.Id), Program.npgSqlConnection);
+            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, user.Id), Program.sqliteConnection);
 
-            using (NpgsqlDataReader reader = getHero.ExecuteReader())
+            using (SqliteDataReader reader = getHero.ExecuteReader())
             {
                 if (reader.HasRows)
                 {
@@ -253,7 +260,7 @@ namespace Aspid.Modules
                 }
                 else
                 {
-                    await Context.Channel.SendMessageAsync("У пользователя нет персонажей");
+                    await Context.Channel.SendMessageAsync(Language(21));
                     return;
                 }
             }
@@ -265,7 +272,7 @@ namespace Aspid.Modules
                 builder
                     .WithColor(Color.DarkBlue)
                     .WithTitle(characters[0].name)
-                    .WithDescription(characters[0].description + "\n\n Автор - " + user.Mention);
+                    .WithDescription(characters[0].description + Language(20) + user.Mention);
                 if (characters[0].image != null)
                 {
                     builder.WithImageUrl(characters[0].image);
@@ -285,7 +292,7 @@ namespace Aspid.Modules
                 builder
                     .WithDescription(list + $"\n\n{user.Mention}")
                     .WithColor(Color.Blue)
-                    .WithTitle($"**Персонажи пользователя**");
+                    .WithTitle(Language(22));
                 await Context.Channel.SendMessageAsync("", false, builder.Build());
             }
         }
@@ -294,44 +301,44 @@ namespace Aspid.Modules
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task GetCharacter(string name, SocketUser owner, [Remainder] string info)
         {
-            NpgsqlCommand command = new NpgsqlCommand(Queries.AddChar(Context.Guild.Id, name, owner.Id, info), Program.npgSqlConnection);
+            SqliteCommand command = new SqliteCommand(Queries.AddChar(Context.Guild.Id, name, owner.Id, info), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await Context.Channel.DeleteMessageAsync(Context.Message);
-            await Context.Channel.SendMessageAsync($"Персонаж ***{name}*** добавлен");
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(24));
         }
 
         [Command("delete")]
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task DeleteCharacter(string name)
         {
-            NpgsqlCommand command = new NpgsqlCommand(Queries.DeleteChar(Context.Guild.Id, name), Program.npgSqlConnection);
+            SqliteCommand command = new SqliteCommand(Queries.DeleteChar(Context.Guild.Id, name), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await Context.Channel.DeleteMessageAsync(Context.Message);
-            await Context.Channel.SendMessageAsync($"Персонаж ***{name}*** удален");
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(25));
         }
 
         [Command("update")]
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task UpdateCharacter(string name, [Remainder] string info)
         {
-            NpgsqlCommand command = new NpgsqlCommand(Queries.ChangeDescription(Context.Guild.Id, name, info), Program.npgSqlConnection);
+            SqliteCommand command = new SqliteCommand(Queries.ChangeDescription(Context.Guild.Id, name, info), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await Context.Channel.DeleteMessageAsync(Context.Message);
-            await Context.Channel.SendMessageAsync($"Персонаж ***{name}*** обновлен");
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
         }
 
         [Command("image")]
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task PicCharacter(string name, string info)
         {
-            NpgsqlCommand command = new NpgsqlCommand(Queries.ChangeImage(Context.Guild.Id, name, info), Program.npgSqlConnection);
+            SqliteCommand command = new SqliteCommand(Queries.ChangeImage(Context.Guild.Id, name, info), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await Context.Channel.DeleteMessageAsync(Context.Message);
-            await Context.Channel.SendMessageAsync($"Персонаж ***{name}*** обновлен");
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
         }
 
         [Command("heroes")]
@@ -341,9 +348,9 @@ namespace Aspid.Modules
 
             List<Hero> characters = new List<Hero>();
 
-            NpgsqlCommand getHero = new NpgsqlCommand(Queries.GetAllCharacters(Context.Guild.Id), Program.npgSqlConnection);
+            SqliteCommand getHero = new SqliteCommand(Queries.GetAllCharacters(Context.Guild.Id), Program.sqliteConnection);
 
-            using (NpgsqlDataReader reader = getHero.ExecuteReader())
+            using (SqliteDataReader reader = getHero.ExecuteReader())
             {
                 if (reader.HasRows)
                 {
@@ -357,7 +364,7 @@ namespace Aspid.Modules
                 }
                 else
                 {
-                    await Context.Channel.SendMessageAsync("На сервере нет персонажей");
+                    await Context.Channel.SendMessageAsync(Language(27));
                     return;
                 }
             }
@@ -375,7 +382,7 @@ namespace Aspid.Modules
             builder
                 .WithDescription(list)
                 .WithColor(Color.Blue)
-                .WithTitle($"**Персонажи**");
+                .WithTitle(Language(28));
             await Context.Channel.SendMessageAsync("", false, builder.Build());
         }
 
@@ -385,9 +392,8 @@ namespace Aspid.Modules
             await Check();
 
             string a;
-            int num;
 
-            string output = "20";
+            string output = "";
             char action = '+';
             string added = "0";
 
@@ -397,11 +403,10 @@ namespace Aspid.Modules
             {
                 a = input[j].ToString();
 
-                bool isNum = int.TryParse(a, out num);
+                bool isNum = int.TryParse(a, out int num);
+
                 if (!isNum)
-                {
                     secPart = true;
-                }
 
                 if (isNum)
                 {
@@ -417,17 +422,20 @@ namespace Aspid.Modules
                 }
             }
 
+            if (output == "")
+                output = "20";
+
             int message = Convert.ToInt32(output);
             int addValue = Convert.ToInt32(added);
 
             if (message > 100 || addValue > 100)
             {
-                await Context.Channel.SendMessageAsync("Ввод не должен превышать 100"); return;
+                await Context.Channel.SendMessageAsync(Language(29)); return;
             }
 
             if (message < 2)
             {
-                await Context.Channel.SendMessageAsync("Ввод должен быть 2 или больше"); return;
+                await Context.Channel.SendMessageAsync(Language(30)); return;
             }
 
             Random rand = new Random();
@@ -455,7 +463,7 @@ namespace Aspid.Modules
 
             builder
                 .WithColor(color)
-                .WithDescription(Context.User.Mention + "\n \n Вам выпало `" + i.ToString() + "`")
+                .WithDescription(Context.User.Mention + Language(31) + i.ToString() + "`")
                 .WithThumbnailUrl("https://cdn.discordapp.com/attachments/603600328117583874/627468862153293824/422823435530403850.png")
                 .WithCurrentTimestamp();
 
@@ -473,11 +481,11 @@ namespace Aspid.Modules
         {
             await Check();
             await Emotion("<:ThinkRadiance:567800282797309957>");
-            if (Global.HelpHandler != null)
+            if (Global.HelpHandler.Item1 != null)
             {
                 try
                 {
-                    await Global.HelpHandler.DeleteAsync();
+                    await Global.HelpHandler.Item1.DeleteAsync();
                 }
                 catch { }
             }
@@ -485,16 +493,28 @@ namespace Aspid.Modules
 
             EmbedBuilder builder = new EmbedBuilder();
             builder
-                .WithTitle("***КОМАНДЫ БОТА***")
-                .WithColor(Color.DarkBlue)
-                .AddField(Fields.FielderTitle[Fields.curren], Fields.Fielder[Fields.curren])
-                .WithFooter("Стр. " + (Fields.curren + 1).ToString() + "/" + Fields.FielderTitle.Length.ToString());
-                
+                .WithTitle(Language(32))
+                .WithColor(Color.DarkBlue);
+            
+            switch (Context.Guild.VoiceRegionId)
+            {
+                case "russia": 
+                    builder
+                        .AddField(Fields.FielderTitleRU[Fields.curren], Fields.FielderRU[Fields.curren])
+                        .WithFooter(Language(33) + (Fields.curren + 1).ToString() + "/" + Fields.FielderTitleRU.Length.ToString());
+                    break;
+                default:
+                    builder
+                        .AddField(Fields.FielderTitleEN[Fields.curren], Fields.FielderEN[Fields.curren])
+                        .WithFooter(Language(33) + (Fields.curren + 1).ToString() + "/" + Fields.FielderTitleEN.Length.ToString());
+                    break;
+            }
+
             RestUserMessage a = await Context.Channel.SendMessageAsync("", false, builder.Build());
 
             await a.AddReactionAsync(new Emoji("◀"));
             await a.AddReactionAsync(new Emoji("▶"));
-            Global.HelpHandler = a;
+            Global.HelpHandler = (a, Context.Guild.VoiceRegionId);
         }
 
         public static Task Turn(string side)
@@ -507,24 +527,38 @@ namespace Aspid.Modules
                 Fields.curren--;
                 changed = true;
             }
-            else if (side == "▶" && Fields.curren < Fields.FielderTitle.Length - 1)
+            else if (side == "▶" && Fields.curren < Fields.FielderTitleRU.Length - 1)
             {
                 Fields.curren++;
                 changed = true;
-            }
+            }         
 
             if (changed)
             {
-                Global.HelpHandler.ModifyAsync(a =>
+                Global.HelpHandler.Item1.ModifyAsync(a =>
                 {
                     EmbedBuilder bruh = new EmbedBuilder()
-                    .WithTitle("***КОМАНДЫ БОТА***")
-                    .WithColor(Color.DarkBlue)
-                    .AddField(Fields.FielderTitle[Fields.curren], Fields.Fielder[Fields.curren])
-                    .WithFooter("Стр. " + (Fields.curren + 1).ToString() + "/" + Fields.FielderTitle.Length.ToString());
+                    //.WithTitle("***КОМАНДЫ БОТА***")
+                    .WithColor(Color.DarkBlue);
+                    
+                    switch (Global.HelpHandler.Item2)
+                    {
+                        case "russia": 
+                            bruh
+                                .WithTitle(Languages.Russian.texts[32])
+                                .AddField(Fields.FielderTitleRU[Fields.curren], Fields.FielderRU[Fields.curren])
+                                .WithFooter("Стр. " + (Fields.curren + 1).ToString() + "/" + Fields.FielderTitleRU.Length.ToString());
+                            break;
+                        default:
+                            bruh
+                                .WithTitle(Languages.English.texts[32])
+                                .AddField(Fields.FielderTitleEN[Fields.curren], Fields.FielderEN[Fields.curren])
+                                .WithFooter("Page " + (Fields.curren + 1).ToString() + "/" + Fields.FielderTitleEN.Length.ToString());
+                            break;
+                    }
                     a.Embed = bruh.Build();
                 });
-                Global.HelpHandler.UpdateAsync();
+                Global.HelpHandler.Item1.UpdateAsync();
             }
             return Task.CompletedTask;
         }
@@ -538,7 +572,7 @@ namespace Aspid.Modules
         {
             IDMChannel ls = await Context.User.GetOrCreateDMChannelAsync();
             EmbedBuilder builder = new EmbedBuilder();
-            builder.WithTitle("Используйте ссылку для добавления бота на свои сервера")
+            builder.WithTitle(Language(34))
                 .WithColor(Color.DarkGreen)
                 .WithDescription("https://discordapp.com/oauth2/authorize?&client_id=581221797295554571&scope=bot&permissions=1345846480")
                 .WithThumbnailUrl("https://media.discordapp.net/attachments/603600328117583874/615150515210420249/primal_aspid_king.gif");
@@ -564,11 +598,11 @@ namespace Aspid.Modules
             await Check();
             EmbedBuilder builder = new EmbedBuilder();
             builder
-                .WithTitle("**ГОЛОСОВАНИЕ**")
+                .WithTitle(Language(35))
                 .WithDescription(
                     message + "\n\n" +
-                    "<:THK_Good:575051447599628311> - если вы за \n" +
-                    "<:THK_Bad:575796719078473738> - если вы против")
+                    "<:THK_Good:575051447599628311>" + Language(36) +
+                    "<:THK_Bad:575796719078473738>" + Language(37))
                 .WithFooter("Предложил(а) " + (Context.User as SocketGuildUser).Nickname)
                 .WithColor(Color.Red);
             await Context.Message.DeleteAsync();
@@ -585,8 +619,8 @@ namespace Aspid.Modules
             await Check();
             EmbedBuilder builder = new EmbedBuilder();
             builder
-                .WithTitle("**О БОТЕ**")
-                .WithDescription("**Primal Aspid** - бот для мессенджера **Discord** на языке **C#** на платформе **.NET Core** [с открытым исходным кодом](https://github.com/xentellion/AspidBot)")
+                .WithTitle(Language(38))
+                .WithDescription(Language(39))
                 .WithColor(Color.Red)
                 .WithImageUrl("https://media.discordapp.net/attachments/614108079545647105/629782304738377738/3032408cf9e547dc.png")
                 .WithCurrentTimestamp();
@@ -600,10 +634,10 @@ namespace Aspid.Modules
             SocketGuild guild = Context.Guild;
             EmbedBuilder builder = new EmbedBuilder();
             builder
-                .WithTitle("**ИНФОРМАЦИЯ О СЕРВЕРЕ**")
+                .WithTitle(Language(40))
                 .WithDescription(
-                $"Сервер **{guild.Name }** создан {guild.CreatedAt.ToLocalTime()}\n\n" +
-                $"Всего на сервере **{guild.Users.Count}** пользователей, **{guild.Roles.Count}** ролей и **{guild.Channels.Count}** каналов\n\n"
+                Language(41) + guild.Name + Language(42) + guild.CreatedAt.ToLocalTime() + "\n\n" +
+                Language(43) + guild.Users.Count + Language(44) + guild.Roles.Count + Language(45) + guild.Channels.Count + Language(46)
                 )
                 .WithCurrentTimestamp()
                 .WithThumbnailUrl(guild.IconUrl)
@@ -626,8 +660,8 @@ namespace Aspid.Modules
                 builder
                     .WithTitle("**ИНФОРМАЦИЯ О СЕРВЕРЕ**")
                     .WithDescription(
-                    $"Сервер **{guild.Name}** создан {guild.CreatedAt.ToLocalTime()}\n\n" +
-                    $"Всего на сервере **{guild.Users.Count}** пользователей, **{guild.Roles.Count}** ролей и **{guild.Channels.Count}** каналов\n\n"
+                    Language(41) + guild.Name + Language(42) + guild.CreatedAt.ToLocalTime() + "\n\n" +
+                    Language(43) + guild.Users.Count + Language(44) + guild.Roles.Count + Language(45) + guild.Channels.Count + Language(46)
                     )
                     .WithCurrentTimestamp()
                     .WithThumbnailUrl(guild.IconUrl)
@@ -673,7 +707,7 @@ namespace Aspid.Modules
             await Resurrect();
             try
             {
-                await Global.HelpHandler.DeleteAsync();
+                await Global.HelpHandler.Item1.DeleteAsync();
             }
             catch { }
             await Context.Channel.SendMessageAsync("", false,
@@ -681,7 +715,7 @@ namespace Aspid.Modules
                 .WithTitle("Бот отключен по техническим причинам")
                 .WithColor(Color.DarkGreen)
                 .WithImageUrl("https://media.discordapp.net/attachments/603600328117583874/615150516388757509/image0-5.png")
-                .Build());//Pic("Бот отключен по техническим причинам").Build());
+                .Build());
             Environment.Exit(1);
         }
         
@@ -716,19 +750,19 @@ namespace Aspid.Modules
             string longitud;
             switch (time)
             {
-                case 'm': longitud = "минут"; break;
-                case 'h': muteTime *= 60; longitud = "часов"; break;
-                case 'd': muteTime *= 1440; longitud = "дней"; break;
-                case 'w': muteTime *= 10080; longitud = "недель"; break;
-                case 'y': muteTime *= 3679200; longitud = "лет"; break;
+                case 'm': longitud = Language(50); break;
+                case 'h': muteTime *= 60; longitud = Language(51); break;
+                case 'd': muteTime *= 1440; longitud = Language(52); break;
+                case 'w': muteTime *= 10080; longitud = Language(53); break;
+                case 'y': muteTime *= 3679200; longitud = Language(54); break;
                 default: return;
             }
 
-            await Context.Channel.SendMessageAsync($"🔇 {user.Mention} *получил(а) мут на {show} {longitud}*");
+            await Context.Channel.SendMessageAsync("🔇 "  + user.Mention + Language(55) + show + " " + longitud + "**");
 
             var role = Context.Guild.Roles.FirstOrDefault(x => x.Name == "Muted");
 
-            NpgsqlCommand command = new NpgsqlCommand(Queries.AddMute(Context.Guild.Id, user.Id, (ulong)muteTime), Program.npgSqlConnection);
+            SqliteCommand command = new SqliteCommand(Queries.AddMute(Context.Guild.Id, user.Id, (ulong)muteTime), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await user.AddRoleAsync(role);
@@ -738,9 +772,9 @@ namespace Aspid.Modules
 
             var ls = await user.GetOrCreateDMChannelAsync();
             EmbedBuilder builder = new EmbedBuilder();
-            if (reason == null) reason = "не указанной администрацией";
-            builder.WithTitle("ВНИМАНИЕ")
-                .WithDescription($"Вы получили мут на сервере **{Context.Guild.Name}** на **{show} {longitud}** по причине {reason}")
+            if (reason == null) reason = Language(56);
+            builder.WithTitle(Language(57))
+                .WithDescription(Language(58) + Context.Guild.Name + Language(59) + show + " " + longitud + Language(60) + reason)
                 .WithColor(Color.Red)
                 .WithThumbnailUrl("https://media.discordapp.net/attachments/603600328117583874/615150515709411357/ezgif.com-gif-maker_31.gif")
                 .WithCurrentTimestamp();
@@ -839,19 +873,17 @@ namespace Aspid.Modules
             SocketRole role = myguild.Roles.FirstOrDefault(x => x.Name == "Dead");
             if (username.Roles.Contains(role))
             {
-                await Context.Channel.SendMessageAsync("Аспиды не дают мертвецам себя гладить");
+                await Context.Channel.SendMessageAsync(Language(61));
                 return;
             }
-            string[] frase = {
-            "Аспиду не понравилось ваше поглаживание и он плюнул в вас кислотой. Вас убило.",
-            "\"С крыльями осторожнее\"",
-            "\"А можно ещё?\"",
-            "Аспиду захотелось ещё, чтобы его погладили",
-            "Аспид отлетел от вас, ибо вы задели его крылья",
-            "Аспиду понравилось поглаживание и он требует больше",
-            "Аспид хочет, чтобы ему почесали спинку",
-            "*Довольное шипение*"
-            };
+            string[] frase;
+
+            switch (Context.Guild.VoiceRegionId)
+            {
+                case "russia": frase = Languages.Russian.pets; break;
+                default: frase = Languages.English.pets; break;
+            }
+
             Random rand = new Random();
             int i = rand.Next(0, frase.Length);
             if (i == 0)
@@ -870,39 +902,15 @@ namespace Aspid.Modules
             await Emotion("<:Aspid:567801319197245448>");
             if (question == null)
             {
-                await Context.Channel.SendMessageAsync("Вы и о чем не спросили");
+                await Context.Channel.SendMessageAsync(Language(62));
                 return;
             }
-            string[] answers =
+            string[] answers;
+            switch (Context.Guild.VoiceRegionId)
             {
-                "Бесспорно",
-                "Конечно",
-                "Никаких сомнений",
-                "Определённо да",
-                "Можешь быть уверен в этом",
-                "Я умру, если нет",
-                "Мне кажется — «да»",
-                "Общество аспидов говорит — «да»",
-                "Вероятнее всего",
-                "Хорошие перспективы",
-                "Знаки говорят — «да»",
-                "Да",
-                "Я уверен, что да",
-                "Вопрос не ясен, перефразируй",
-                "Спроси позже",
-                "Лучше не знать тебе ответ",
-                "Ты хочешь, что бы я умер, отвечая на такой сложный вопрос?",
-                "Cейчас нельзя сказать",
-                "Сначала погладь, а потом спроси",
-                "Не хочу отвечать",
-                "Даже не думай",
-                "Мой ответ — «нет»",
-                "Общество аспидов говорит — «нет»",
-                "Перспективы не очень хорошие",
-                "Весьма сомнительно",
-                "Нет",
-                "Не зли меня этим плохим вопросом",
-            };
+                case "russia": answers = Languages.Russian.asks; break;
+                default: answers = Languages.English.asks; break;
+            }
             Random rand = new Random();
             int i = rand.Next(0, answers.Length);
             await Context.Channel.SendMessageAsync(Context.User.Mention + " " + answers[i]);

@@ -15,7 +15,7 @@ namespace Aspid.Modules
         internal static List<Discord.Rest.RestUserMessage> missCashe = new List<Discord.Rest.RestUserMessage>();
         internal static List<SocketMessage> shooter = new List<SocketMessage>();
 
-        internal static Discord.Rest.RestUserMessage HelpHandler { get; set; }
+        internal static (Discord.Rest.RestUserMessage, string) HelpHandler { get; set; }
 
         public static IEnumerable<Discord.IMessage> messages { get; set; }
     }
