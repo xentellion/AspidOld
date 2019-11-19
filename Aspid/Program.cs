@@ -3,9 +3,7 @@ using Discord.WebSocket;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace Aspid
@@ -15,57 +13,37 @@ namespace Aspid
         internal static DiscordSocketClient _client;
         CommandHandler _handler;
 
-        const string LinuxPrefix = "/home/xentellion/Aspid1/Data/AspidDataBase.db";
-
-        internal static string connectionString = "C:/Data/AspidDataBase.db";
-
+        internal static string connectionString = Config.connectionString;
         internal static SqliteConnection sqliteConnection;
-
-        static OverwritePermissions permissions = new OverwritePermissions(PermValue.Inherit, PermValue.Inherit, PermValue.Deny, PermValue.Inherit, PermValue.Deny, PermValue.Deny);
-
+      
         static void Main(string[] args) => new Program().StartAsync().GetAwaiter().GetResult();
 
         public async Task StartAsync()
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            if (Config.bot.token == "" || Config.bot.token == null)
             {
-                if (!File.Exists(LinuxPrefix))
-                {
-                    File.Create(LinuxPrefix);
-                    return;
-                }
-                sqliteConnection = new SqliteConnection
-                {
-                    ConnectionString = "Filename = " + LinuxPrefix
-                };
-            }
-            else
-            {
-                if (!File.Exists(connectionString))
-                {
-                    File.Create(connectionString);
-                    return;
-                }
-                sqliteConnection = new SqliteConnection
-                {
-                    ConnectionString = "Filename = " + connectionString
-                };
+                Console.WriteLine("Configuration file is empty or does not exist");
+                System.Threading.Thread.Sleep(5000);
+                return;
             }
 
-            if (Config.bot.token == "" || Config.bot.token == null) return;
             _client = new DiscordSocketClient(new DiscordSocketConfig
             {
                 LogLevel = Discord.LogSeverity.Verbose
             });
 
+            sqliteConnection = new SqliteConnection
+            {
+                ConnectionString = Config.connectionString
+            };
+            sqliteConnection.Open();
+
             _client.Log += Log;
 
-            sqliteConnection.Open();
             Console.WriteLine(DateTime.Now.TimeOfDay + " Connected to SQLite database " + sqliteConnection.Database);
 
             _client.Ready += Modules.Repeater.Muted;
 
-            _client.Ready += FondGuild;
             _client.Ready += GetGrubs;
             _client.Ready += GetGuilds;
 
@@ -141,6 +119,7 @@ namespace Aspid
         {
             IEnumerable<SocketGuildChannel> channels = arg.Channels;
             IEnumerable<SocketRole> roles = arg.Roles;
+
             var result = from b in roles
                          where b.Name == "Muted"
                          select b;
@@ -148,11 +127,8 @@ namespace Aspid
 
             foreach (SocketGuildChannel a in channels)
             {
-                try
-                {
-                    await a.AddPermissionOverwriteAsync(mute, permissions);
-                }
-                catch { }
+                try { await a.AddPermissionOverwriteAsync(mute, Modules.Global.permissions); }
+                catch { Console.WriteLine("Cannot add permissions to channel"); }
             }
         }
 
@@ -161,25 +137,19 @@ namespace Aspid
             try
             {
                 SocketRole role = (arg as SocketGuildChannel).Guild.Roles.FirstOrDefault(x => x.Name == "Muted");
-                (arg as IGuildChannel).AddPermissionOverwriteAsync(role, permissions);
+                (arg as IGuildChannel).AddPermissionOverwriteAsync(role, Modules.Global.permissions);
             }
-            catch{}
+            catch{ Console.WriteLine("Cannot add role"); }
+
             return Task.CompletedTask;
         }
 
         #endregion
 
-        static Task FondGuild() //для постинга аспидов
-        {
-            SocketGuild f = _client.GetGuild(567767402062807055);
-            Modules.Global.channel = (ISocketMessageChannel)f.GetChannel(567770314642030592);
-            return Task.CompletedTask;
-        }
-
         public static async Task GetGrubs()
         {
             SocketChannel channel = _client.GetChannel(627615133115482149);
-            Modules.Global.messages = await (channel as ISocketMessageChannel).GetMessagesAsync(1000).FlattenAsync();
+            Modules.Global.Messages = await (channel as ISocketMessageChannel).GetMessagesAsync(1000).FlattenAsync();
             Console.WriteLine();
         }
 
@@ -219,7 +189,7 @@ namespace Aspid
                 .WithColor(Color.Red)
                 .WithCurrentTimestamp()
                 .WithThumbnailUrl(arg.GetAvatarUrl())
-                .WithDescription($"**" + (arg as IUser).Username + Language(65, arg.Guild.Id))
+                .WithDescription("**" + (arg as IUser).Username + Language(65, arg.Guild.Id))
                 .WithTitle(Language(66, arg.Guild.Id));
             await arg.Guild.DefaultChannel.SendMessageAsync("", false, builder.Build());
 
@@ -228,7 +198,7 @@ namespace Aspid
                 SqliteCommand delUser = new SqliteCommand(Queries.DeleteUser(arg.Guild.Id, arg.Id), sqliteConnection);
                 delUser.ExecuteNonQuery();
             }
-            catch { }
+            catch { Console.WriteLine("Cannot delete user"); }
         }
 
         #endregion

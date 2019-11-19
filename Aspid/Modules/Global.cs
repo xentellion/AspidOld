@@ -1,13 +1,12 @@
-﻿using Discord.WebSocket;
-using System;
+﻿using Discord;
+using Discord.WebSocket;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Aspid.Modules
 {
     class Global
     {
-        internal static ISocketMessageChannel channel = null;
+        internal static ISocketMessageChannel channel = (ISocketMessageChannel)Program._client.GetGuild(567767402062807055).GetChannel(567770314642030592);
 
         internal static List<Discord.Rest.RestUserMessage> Cashe = new List<Discord.Rest.RestUserMessage>();
         internal static List<SocketMessage> GrubCast = new List<SocketMessage>();
@@ -17,6 +16,8 @@ namespace Aspid.Modules
 
         internal static (Discord.Rest.RestUserMessage, string) HelpHandler { get; set; }
 
-        public static IEnumerable<Discord.IMessage> messages { get; set; }
+        internal static IEnumerable<Discord.IMessage> Messages { get; set; }
+
+        internal static OverwritePermissions permissions = new OverwritePermissions(PermValue.Inherit, PermValue.Inherit, PermValue.Deny, PermValue.Inherit, PermValue.Deny, PermValue.Deny);
     }
 }

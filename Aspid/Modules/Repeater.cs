@@ -63,6 +63,8 @@ namespace Aspid.Modules
                 List<ulong> DePunished = new List<ulong>();
                 List<ulong> DeMuted = new List<ulong>();
 
+                #region Depunish
+
                 using (SqliteDataReader reader = dePunish.ExecuteReader())
                 {
                     foreach(DbDataRecord record in reader)
@@ -84,6 +86,10 @@ namespace Aspid.Modules
                     }
                 }
 
+                #endregion
+
+                #region Demute
+
                 using (SqliteDataReader reader = deMute.ExecuteReader())
                 {
                     foreach (DbDataRecord record in reader)
@@ -104,6 +110,8 @@ namespace Aspid.Modules
                         dePun.ExecuteNonQuery();
                     }
                 }
+
+                #endregion
             }
         }
     }

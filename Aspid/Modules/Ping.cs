@@ -14,7 +14,6 @@ namespace Aspid.Modules
 {
     public class Ping : ModuleBase<SocketCommandContext>
     {
-        public static int counter = 0;
 
         public async Task Emotion(string emotion)
         {
@@ -73,8 +72,8 @@ namespace Aspid.Modules
             int i = rand.Next(0, 6);
             if (i == 0)
             {
-                counter++;
                 Config.bot.deadPeople++;
+
                 SocketUser user = Context.User;
                 await Context.Channel.SendMessageAsync(Language(3) + user.Mention + Language(4), false);
                 await (user as IGuildUser).AddRoleAsync(role);
@@ -120,7 +119,6 @@ namespace Aspid.Modules
             int i = rand.Next(0, 2);
             if (i == 0)
             {
-                counter++;
                 Config.bot.deadPeople++;
                 await Context.Channel.SendMessageAsync(Language(13) + message.Mention, false);
                 await (message as IGuildUser).AddRoleAsync(role1);
@@ -157,7 +155,7 @@ namespace Aspid.Modules
         {
             var role = Context.Guild.Roles.FirstOrDefault(x => x.Name == "Dead");
             var users = Context.Guild.Users;
-
+            int counter = 0;
             foreach(SocketGuildUser a in users)
             {
                 var roles = a.Roles;
@@ -168,10 +166,10 @@ namespace Aspid.Modules
                 if(c != null)
                 {
                         await (a as IGuildUser).RemoveRoleAsync(role);
+                    counter++;
                 }
             }
-            await Context.Channel.SendMessageAsync(">>> " + counter + Language(15) + " " + Config.bot.deadPeople + " " + Language(16), false);
-            counter = 0;
+            await Context.Channel.SendMessageAsync(">>> " + counter + Language(15) + Config.bot.deadPeople + Language(16), false);
         }
 
 
@@ -670,6 +668,28 @@ namespace Aspid.Modules
             }
         }
 
+        [Command("global")]
+        public async Task GlobalAnnounce([Remainder] string text)
+        {
+            if (Context.User.Id != 264811248552640522)
+            {
+                await Context.Message.DeleteAsync();
+                return;
+            }
+
+            EmbedBuilder builder = new EmbedBuilder();
+            builder
+                .WithTitle("ATTENCION")
+                .WithColor(Color.Default)
+                .WithDescription(text);
+
+            IEnumerable<SocketGuild> guilds = Program._client.Guilds;
+            foreach (SocketGuild guild in guilds)
+            {
+                await guild.DefaultChannel.SendMessageAsync("", false, builder.Build());
+            }
+        }
+
         #endregion
 
         #region PowerHandler
@@ -681,7 +701,7 @@ namespace Aspid.Modules
             SocketGuild myguild = Context.Guild;
             SocketRole role = myguild.Roles.FirstOrDefault(x => x.Name == "Muted");
             SocketUser bot = myguild.GetUser(581221797295554571);
-            await Context.Channel.SendMessageAsync("Бот отключен");
+            await Context.Channel.SendMessageAsync(Language(47));
             await (bot as IGuildUser).AddRoleAsync(role);
         }
 
@@ -693,7 +713,7 @@ namespace Aspid.Modules
             SocketRole role = myguild.Roles.FirstOrDefault(x => x.Name == "Muted");
             SocketUser bot = myguild.GetUser(581221797295554571);
             await (bot as IGuildUser).RemoveRoleAsync(role);
-            await Context.Channel.SendMessageAsync("Бот включен");
+            await Context.Channel.SendMessageAsync(Language(48));
         }
 
         [Command("break")]
@@ -704,18 +724,20 @@ namespace Aspid.Modules
                 await Context.Message.DeleteAsync();
                 return;
             }
-            await Resurrect();
+
+            await Context.Channel.SendMessageAsync("", false,
+            new EmbedBuilder()
+            .WithTitle(Language(49))
+            .WithColor(Color.DarkGreen)
+            .WithImageUrl("https://media.discordapp.net/attachments/603600328117583874/615150516388757509/image0-5.png")
+            .Build());
+
             try
             {
                 await Global.HelpHandler.Item1.DeleteAsync();
             }
-            catch { }
-            await Context.Channel.SendMessageAsync("", false,
-                new EmbedBuilder()
-                .WithTitle("Бот отключен по техническим причинам")
-                .WithColor(Color.DarkGreen)
-                .WithImageUrl("https://media.discordapp.net/attachments/603600328117583874/615150516388757509/image0-5.png")
-                .Build());
+            catch { Console.WriteLine("Cannot delete that message"); }
+            
             Environment.Exit(1);
         }
         
@@ -831,8 +853,8 @@ namespace Aspid.Modules
         {
             await Emotion("<:cosplay:603601170346541058>");
             Random rand = new Random();
-            int i = rand.Next(0, Global.messages.Count());
-            string grub = Global.messages.ElementAt(i).Attachments.First().Url;
+            int i = rand.Next(0, Global.Messages.Count());
+            string grub = Global.Messages.ElementAt(i).Attachments.First().Url;
             EmbedBuilder builder = new EmbedBuilder();
             builder
                 .WithImageUrl(grub)
@@ -855,7 +877,7 @@ namespace Aspid.Modules
         public async Task Refresh()
         {
             SocketChannel channel = Program._client.GetChannel(627615133115482149);
-            Global.messages = await (channel as ISocketMessageChannel).GetMessagesAsync().FlattenAsync();
+            Global.Messages = await (channel as ISocketMessageChannel).GetMessagesAsync().FlattenAsync();
             await Context.Message.DeleteAsync();
         }
 
@@ -888,7 +910,6 @@ namespace Aspid.Modules
             int i = rand.Next(0, frase.Length);
             if (i == 0)
             {
-                counter++;
                 Config.bot.deadPeople++;
                 await (username as IGuildUser).AddRoleAsync(role);
             }
