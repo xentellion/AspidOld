@@ -15,8 +15,8 @@ namespace Aspid
 
     class Config
     {
-        const string LinuxFolder = "/home/xentellion/Aspid/Data";
-        static string WindowsFolder { get; } = $"{System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments)}/xentellion/Aspid";
+        static string LinuxFolder { get; } = "/home/xentellion/Aspid/Data";
+        static string WindowsFolder { get; } = $"{System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments)}/Xentellion/Aspid";
 
         static string configPath;
 

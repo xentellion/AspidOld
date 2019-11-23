@@ -32,7 +32,7 @@ namespace Aspid
 
             int argPos = 0;
 
-            if (msg.Content.Contains("аспид") || msg.Content.Contains("Аспид"))
+            if (msg.Content.ToLower().Contains("аспид") || msg.Content.ToLower().Contains("aspid"))
             {
                 var emote = Emote.Parse("<:Aspid:567801319197245448>");
                 await context.Message.AddReactionAsync(emote);

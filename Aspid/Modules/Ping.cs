@@ -14,7 +14,6 @@ namespace Aspid.Modules
 {
     public class Ping : ModuleBase<SocketCommandContext>
     {
-
         public async Task Emotion(string emotion)
         {
             Emote emote = Emote.Parse(emotion);
@@ -209,7 +208,8 @@ namespace Aspid.Modules
                         {
                             name = Convert.ToString(record["CHAR_NAME"]),
                             owner = Convert.ToUInt64(record["CHAR_OWNER"]),
-                            description = Convert.ToString(record["DESCRIPTION"])
+                            description = Convert.ToString(record["DESCRIPTION"]),
+                            image = Convert.ToString(record["CHAR_IMAGE"]),
                         };
                     }
                 }
@@ -252,7 +252,8 @@ namespace Aspid.Modules
                         {
                             name = Convert.ToString(record["CHAR_NAME"]),
                             owner = Convert.ToUInt64(record["CHAR_OWNER"]),
-                            description = Convert.ToString(record["DESCRIPTION"])
+                            description = Convert.ToString(record["DESCRIPTION"]),
+                            image = Convert.ToString(record["CHAR_IMAGE"]),
                         });
                     }
                 }
@@ -280,8 +281,8 @@ namespace Aspid.Modules
             else
             {
                 string list = "";
-                characters.OrderBy(x => x.name).ToList();
-                foreach(Hero hero in characters)
+                characters.Sort((x, y) => string.Compare(x.name, y.name));
+                foreach (Hero hero in characters)
                 {
                     list += hero.name;
                     list += "\n";
@@ -368,7 +369,7 @@ namespace Aspid.Modules
             }
 
             string list = "";
-            characters.OrderBy(x => x.name).ToList();
+            characters.Sort((x, y) => string.Compare(x.name, y.name));
 
             foreach (Hero hero in characters)
             {
