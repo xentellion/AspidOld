@@ -14,28 +14,6 @@ namespace Aspid.Modules
 {
     public class Ping : ModuleBase<SocketCommandContext>
     {
-        [Command("vibe")]
-        public async Task Vibe()
-        {
-            EmbedBuilder embed = new EmbedBuilder();
-            embed.
-                WithTitle("Title")
-                .WithColor(Color.Default)
-                .WithDescription("")
-
-
-            .AddField(x =>
-            {
-                x.Name = "------------";
-                x.Value = "------------";
-                x.IsInline = true;
-            })
-            ;
-
-            await Context.Channel.SendMessageAsync("", false, embed.Build());
-        }
-
-
         public async Task Emotion(string emotion)
         {
             Emote emote = Emote.Parse(emotion);
@@ -761,6 +739,8 @@ namespace Aspid.Modules
                 await Context.Message.DeleteAsync();
                 return;
             }
+
+            Config.SaveDead();
 
             await Context.Channel.SendMessageAsync("", false,
             new EmbedBuilder()

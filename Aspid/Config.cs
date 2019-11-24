@@ -57,5 +57,11 @@ namespace Aspid
 
             connectionString = "Filename = " + configPath + mydb;
         }
+
+        public static void SaveDead()
+        {
+            string json = JsonConvert.SerializeObject(bot, Formatting.Indented);
+            File.WriteAllText(configPath + configFile, json);
+        }
     }
 }
