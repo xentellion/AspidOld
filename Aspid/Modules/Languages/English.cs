@@ -7,6 +7,7 @@ namespace Aspid.Modules.Languages
         public static readonly Dictionary<int, string> texts = new Dictionary<int, string>
         {
             [0] = "You took the revolver in hand",
+<<<<<<< HEAD
             [1] = "You checked the cylinder and spun it",
             [2] = "You put the gun to your head...",
             [3] = "The shot rang out and body of ",
