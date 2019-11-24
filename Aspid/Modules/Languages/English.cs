@@ -7,25 +7,25 @@ namespace Aspid.Modules.Languages
         public static readonly Dictionary<int, string> texts = new Dictionary<int, string>
         {
             [0] = "You took the revolver in hand",
-            [1] = "You checked the cylinder and spinned it",
+            [1] = "You checked the cylinder and spun it",
             [2] = "You put the gun to your head...",
             [3] = "The shot rang out and body of ",
-            [4] = " fell on the floor loudly",
-            [5] = "Missfire! Pass the gun to someone else. Let him test his luck.",
+            [4] = " fell to the ground",
+            [5] = "Click! Nothing Happened! Pass the gun to someone else. Let him test his luck.",
 
             [6] = "It's forbidden to give guns to crimes",
             [7] = "Dead men don't play with luck",
 
-            [8] = "*YOU CANNOT RID OF THE ASPIDS THIS WAY*",
+            [8] = "*Bots are immune to bullets, the Aspids are no exception*",
             [9] = "Suicide? Not this way",
             [10] = "Don't offer guns to the dead",
             [11] = "It's forbidden to give guns to crimes",
-            [12] = "You are shooting at dead corpse. Death was not enough?",
+            [12] = "You are shooting at dead corpse. Was death not enough?",
 
             [13] = "You shot ",
             [14] = "Miss! What a shame ",
 
-            [15] = " person were dead\n\nTotally died ",
+            [15] = " people were dead\n\nIn total have died ",
             [16] = " times \n",
 
             [17] = "Suddenly, kingsmoulds burst in the room, take away ",
@@ -62,7 +62,7 @@ namespace Aspid.Modules.Languages
             [37] = " - if you are against this",
 
             [38] = "**ABOUT**",
-            [39] = "**Primal Aspid** - [Opensorce](https://github.com/xentellion/Aspid) **Discord** messenger bot on **C#** language on **.NET Core** platform",
+            [39] = "**Primal Aspid** - [Opensource](https://github.com/xentellion/Aspid) **Discord** messenger bot on **C#** language on **.NET Core** platform",
 
             [40] = "**SERVER INFO**",
             [41] = "Server **",
@@ -108,7 +108,7 @@ namespace Aspid.Modules.Languages
             "I think yes",
             "Aspid Community says 'Yes'",
             "Most likely",
-            "Good perspectives",
+            "Outlook good",
             "Signs say 'yes'",
             "Yes",
             "I am sure",
@@ -122,7 +122,7 @@ namespace Aspid.Modules.Languages
             "Don't you dare",
             "I say 'no'",
             "Aspid Community says 'No'",
-            "Not really good perspectives",
+            "Not good outlook",
             "Highly doubtful",
             "No",
             "Don't make me angry with this question",

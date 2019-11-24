@@ -14,6 +14,28 @@ namespace Aspid.Modules
 {
     public class Ping : ModuleBase<SocketCommandContext>
     {
+        [Command("vibe")]
+        public async Task Vibe()
+        {
+            EmbedBuilder embed = new EmbedBuilder();
+            embed.
+                WithTitle("Title")
+                .WithColor(Color.Default)
+                .WithDescription("")
+
+
+            .AddField(x =>
+            {
+                x.Name = "------------";
+                x.Value = "------------";
+                x.IsInline = true;
+            })
+            ;
+
+            await Context.Channel.SendMessageAsync("", false, embed.Build());
+        }
+
+
         public async Task Emotion(string emotion)
         {
             Emote emote = Emote.Parse(emotion);
@@ -368,20 +390,34 @@ namespace Aspid.Modules
                 }
             }
 
-            string list = "";
             characters.Sort((x, y) => string.Compare(x.name, y.name));
-
-            foreach (Hero hero in characters)
-            {
-                list += hero.name;
-                list += "\n";
-            }
 
             EmbedBuilder builder = new EmbedBuilder();
             builder
-                .WithDescription(list)
-                .WithColor(Color.Blue)
+                .WithColor(Color.Default)
                 .WithTitle(Language(28));
+
+            foreach (Hero hero in characters)
+            {
+                string name = hero.name;
+                name = name.Replace(@"\", "");
+
+                int a = name.Length / 2;
+                string b = "";
+
+                if (a < 5)
+                {
+                    for (int i = 0; i < 5 - a; i++)
+                        b += " ";
+                }
+
+                builder.AddField(x =>
+                {
+                    x.Name = "<:left:648177971185844235>-----------<:right:648177971504611338>";
+                    x.Value = $"```{b + name}```";
+                    x.IsInline = true;
+                });
+            }
             await Context.Channel.SendMessageAsync("", false, builder.Build());
         }
 
