@@ -7,24 +7,32 @@ namespace Aspid.Modules.Languages
         public static readonly Dictionary<int, string> texts = new Dictionary<int, string>
         {
             [0] = "You took the revolver in hand",
+            //"You checked the cylinder and spun it"
             [1] = "You checked the cylinder and spinned it",
             [2] = "You put the gun to your head...",
             [3] = "The shot rang out and body of ",
+            //An altenrative could be " fell to the ground", maybe have multiple death messages?
             [4] = " fell on the floor loudly",
+            //I think a gun tries to fire it just makes a click noise, so maybe
+            //"Click! Nothing Happened! Pass the gun to someone else. Let thenm test their luck."
             [5] = "Missfire! Pass the gun to someone else. Let him test his luck.",
 
             [6] = "It's forbidden to give guns to crimes",
             [7] = "Dead men don't play with luck",
 
+            //"Bots are immune to bullets, the Aspids are no exception"
             [8] = "*YOU CANNOT RID OF THE ASPIDS THIS WAY*",
             [9] = "Suicide? Not this way",
             [10] = "Don't offer guns to the dead",
             [11] = "It's forbidden to give guns to crimes",
+            //It might sound better as "Was death not enough?", but that's just my preference.
             [12] = "You are shooting at dead corpse. Death was not enough?",
 
             [13] = "You shot ",
             [14] = "Miss! What a shame ",
 
+            //Might sound better as
+            //"X people were dead. Y people have died in total."
             [15] = " person were dead\n\nTotally died ",
             [16] = " times \n",
 
@@ -108,6 +116,7 @@ namespace Aspid.Modules.Languages
             "I think yes",
             "Aspid Community says 'Yes'",
             "Most likely",
+            //"Outlook good". Good perspectives is a little strange in context.
             "Good perspectives",
             "Signs say 'yes'",
             "Yes",
@@ -122,6 +131,7 @@ namespace Aspid.Modules.Languages
             "Don't you dare",
             "I say 'no'",
             "Aspid Community says 'No'",
+            //"Outlook bad" or "Not good outlook".
             "Not really good perspectives",
             "Highly doubtful",
             "No",
