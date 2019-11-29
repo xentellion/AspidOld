@@ -217,6 +217,11 @@ namespace Aspid
                         Modules.Ping.Turn(reaction.Emote.Name);
                     }
                 }
+
+                if (Modules.Global.CharacterSetter.Item1 != null && reaction.MessageId == Modules.Global.CharacterSetter.Item1.Id)
+                {
+                    Modules.Ping.NextPage(reaction.Emote.Name, Modules.Global.CharacterSetter.Item2);
+                }
             }
             return Task.CompletedTask;
         }

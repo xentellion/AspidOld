@@ -62,24 +62,27 @@ namespace Aspid.Modules
                 return;
             }
 
-            Thread.Sleep(1000); await Context.Channel.SendMessageAsync(Language(0), false);
-            Thread.Sleep(2000); await Context.Channel.SendMessageAsync(Language(1), false);
-            Thread.Sleep(2000); await Context.Channel.SendMessageAsync(Language(2), false);
-            Thread.Sleep(4000);
-
-            Random rand = new Random();
-            int i = rand.Next(0, 6);
-            if (i == 0)
+            Thread thread = new Thread(x =>
             {
-                Config.bot.deadPeople++;
+                Thread.Sleep(1000); Context.Channel.SendMessageAsync(Language(0), false);
+                Thread.Sleep(2000); Context.Channel.SendMessageAsync(Language(1), false);
+                Thread.Sleep(2000); Context.Channel.SendMessageAsync(Language(2), false);
+                Thread.Sleep(4000);
 
-                SocketUser user = Context.User;
-                await Context.Channel.SendMessageAsync(Language(3) + user.Mention + Language(4), false);
-                await (user as IGuildUser).AddRoleAsync(role);
-            }
-            else await Context.Channel.SendMessageAsync(Language(5), false);
+                Random rand = new Random();
+                int i = rand.Next(0, 6);
+                if (i == 0)
+                {
+                    Config.bot.deadPeople++;
+
+                    Context.Channel.SendMessageAsync(Language(3) + Context.User.Mention + Language(4), false);
+                    (Context.User as IGuildUser).AddRoleAsync(role);
+                }
+                else Context.Channel.SendMessageAsync(Language(5), false);
+            });
+
+            thread.Start();
         }
-
 
         [Command("shoot")]
         public async Task Shoot(SocketGuildUser message)
@@ -298,13 +301,31 @@ namespace Aspid.Modules
 
         [Command("add")]
         [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task GetCharacter(string name, SocketUser owner, [Remainder] string info)
+        public async Task AddCharacter(string name, SocketUser owner, [Remainder] string info)
         {
             SqliteCommand command = new SqliteCommand(Queries.AddChar(Context.Guild.Id, name, owner.Id, info), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await Context.Channel.DeleteMessageAsync(Context.Message);
-            await Context.Channel.SendMessageAsync(Language(23) + name + Language(24));
+
+            EmbedBuilder builder = new EmbedBuilder////
+            {
+                Title = name,
+                Color = Color.Default,
+                Description =
+                Language(23) + name + Language(24) + "\n\n" +
+               "Выберите основное оружие персонажа\n" +
+               "0 - безоружен\n" +
+               "1 - легкое\n" +
+               "2 - среднее\n" +
+               "3 - тяжелое"
+            };
+            RestUserMessage message = await Context.Channel.SendMessageAsync("", false, builder.Build());
+
+            Emoji[] emojis = { new Emoji("0️⃣"), new Emoji("1️⃣"), new Emoji("2️⃣"), new Emoji("3️⃣") };
+            await message.AddReactionsAsync(emojis);
+
+            Global.CharacterSetter = (message, 0, "", name, Context.Guild.Id);
         }
 
         [Command("delete")]
@@ -400,7 +421,7 @@ namespace Aspid.Modules
         }
 
         [Command("roll")]
-        public async Task RollDice(string input = "20+0")
+        public async Task RollDice([Remainder] string input = "20+0")
         {
             await Check();
 
@@ -954,6 +975,314 @@ namespace Aspid.Modules
             await Context.Channel.SendMessageAsync(Context.User.Mention + " " + answers[i]);
         }
 
+        #endregion
+
+        #region AdvancedRP
+
+        [Command("skills")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task AddSkills(string name, [Remainder] string skill)
+        {
+            string[] words = skill.Split(new char[] { '|',',' });
+            if (words.Length != 6) 
+                return;
+
+            SqliteCommand command = new SqliteCommand(Queries.AddSkills(Context.Guild.Id, name, skill), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+            await Context.Channel.SendMessageAsync("Навыки распределены");
+        }
+
+        [Command("talent")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task AddTalent(string name, [Remainder] string skill)
+        {
+            string[] words = skill.Split(new char[] { '|' });
+            if (words.Length != 2) 
+                return;
+            SqliteCommand command = new SqliteCommand(Queries.AddTalent(Context.Guild.Id, name, skill), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+
+            await Context.Channel.SendMessageAsync("Талант распределен");
+        }
+
+        class Stats
+        {
+            internal string name { get; set; }
+            internal string stats { get; set; }
+            internal string talent { get; set; }
+            internal string hp { get; set; }
+            internal int currentHp { get; set; }
+            internal string image { get; set; }
+        };
+
+        [Command("stats")]
+        public async Task GetStats(string name)
+        {
+            Stats stats = new Stats();
+
+            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.sqliteConnection);
+
+            using (SqliteDataReader reader = getHero.ExecuteReader())
+            {
+                if (reader.HasRows)
+                {
+                    foreach (DbDataRecord record in reader)
+                    {
+                        stats = new Stats
+                        {
+                            name = Convert.ToString(record["CHAR_NAME"]),
+                            stats = Convert.ToString(record["CHAR_SKILLS"]),
+                            talent = Convert.ToString(record["CHAR_TALENTS"]),
+                            hp = Convert.ToString(record["CHAR_HP"]),
+                            currentHp = Convert.ToInt32(record["CHAR_CURHP"]),
+                            image = Convert.ToString(record["CHAR_IMAGE"])
+                        };
+                    }
+                }
+                else
+                {
+                    await Context.Channel.SendMessageAsync(Language(19));
+                    return;
+                }
+            }
+
+            string[] words = stats.stats.Split(new char[] { '|',',' });
+            if (words.Length != 6)
+                return;
+
+            string[] talent = stats.talent.Split(new char[] { '|', ',' });
+            if (talent.Length != 2)
+                return;
+
+            string rs = "<:red:650103765042593812>";
+            string gs = "<:green:650103747904667648>";
+
+            string res = "";
+
+            int HP = Convert.ToInt32(stats.hp[2].ToString());
+
+            for (int i = 0; i < stats.currentHp; i++)
+            {
+                res += gs;
+            }
+            for (int i = 0; i < HP - stats.currentHp; i++)
+            {
+                res += rs;
+            }
+
+            string a1 = $"Урон Основным оружием - {stats.hp[0]}";
+            string a2 = "";
+
+            if (Convert.ToInt32(stats.hp[1].ToString()) > 0)
+                a2 = $"Урон Вспомогательным оружием - { stats.hp[1]}";
+
+            EmbedBuilder builder = new EmbedBuilder();
+            builder
+                .WithTitle(stats.name)
+                .WithDescription($"Здоровье - {res}\n\n{a1}\n{a2}")
+                .WithColor(Color.DarkBlue)
+                .WithThumbnailUrl(stats.image);
+
+                builder.AddField(x =>
+                {
+                    x.Name = $"**{talent[0]}**";
+                    x.Value = talent[1];
+                });
+
+            for(int i = 0; i < 6; i+=2)
+            {
+                builder.AddField(x =>
+                {
+                    x.Name = $"**{words[i]}**";
+                    x.Value = words[i+1];
+                    x.IsInline = true;
+                });
+            }
+
+            await Context.Channel.SendMessageAsync("", false, builder.Build());
+        }
+
+        public static Task NextPage(string emojie, int state)
+        {
+            switch (state)
+            {
+                case 0:
+                    switch (emojie)
+                    {
+                        case "0️⃣":
+                            Global.CharacterSetter.Item3 += 0; break;
+                        case "1️⃣":
+                            Global.CharacterSetter.Item3 += 1; break;
+                        case "2️⃣":
+                            Global.CharacterSetter.Item3 += 2; break;
+                        case "3️⃣":
+                            Global.CharacterSetter.Item3 += 3; break;
+                        default:
+                            return Task.CompletedTask;
+                    }
+                    Global.CharacterSetter.Item1.RemoveAllReactionsAsync();
+
+                    Global.CharacterSetter.Item2++;
+
+                    Global.CharacterSetter.Item1.ModifyAsync(message =>
+                    {
+                        EmbedBuilder builder = new EmbedBuilder////
+                        {
+                            Title = Global.CharacterSetter.Item4,
+                            Color = Color.Default,
+                            Description =
+                            "Выберите второстепенное оружие персонажа\n" +
+                            "0 - отсутствует\n" +
+                            "1 - легкое\n" +
+                            "2 - среднее\n"
+                        };
+                        message.Embed = builder.Build();
+                    });
+                    Global.CharacterSetter.Item1.UpdateAsync();
+
+                    Emoji[] emojis = { new Emoji("0️⃣"), new Emoji("1️⃣"), new Emoji("2️⃣")};
+                    Global.CharacterSetter.Item1.AddReactionsAsync(emojis);
+                    break;
+                case 1:
+                    switch (emojie)
+                    {
+                        case "0️⃣":
+                            Global.CharacterSetter.Item3 += 0; break;
+                        case "1️⃣":
+                            Global.CharacterSetter.Item3 += 1; break;
+                        case "2️⃣":
+                            Global.CharacterSetter.Item3 += 2; break;
+                        default:
+                            return Task.CompletedTask;
+                    }
+                    Global.CharacterSetter.Item1.RemoveAllReactionsAsync();
+
+                    Global.CharacterSetter.Item2++;
+
+                    Global.CharacterSetter.Item1.ModifyAsync(message =>
+                    {
+                        EmbedBuilder builder = new EmbedBuilder
+                        {
+                            Title = Global.CharacterSetter.Item4,
+                            Color = Color.Default,
+                            Description =
+                                "Выберите количество здоровья персонажа\n"
+                        };
+                        message.Embed = builder.Build();
+                    });
+                    Global.CharacterSetter.Item1.UpdateAsync();
+
+                    Emoji[] emojis1 = { new Emoji("3️⃣"), new Emoji("5️⃣"), new Emoji("7️⃣") };
+                    Global.CharacterSetter.Item1.AddReactionsAsync(emojis1);
+                    break;
+
+                case 2:
+                    switch (emojie)
+                    {
+                        case "3️⃣":
+                            Global.CharacterSetter.Item3 += 3;
+                            break;
+                        case "5️⃣":
+                            Global.CharacterSetter.Item3 += 5;
+                            break;
+                        case "7️⃣":
+                            Global.CharacterSetter.Item3 += 7;
+                            break;
+                        default:
+                            return Task.CompletedTask;
+                    }
+                    Global.CharacterSetter.Item1.RemoveAllReactionsAsync();
+                    Global.CharacterSetter.Item2++;
+
+                    SqliteCommand command = new SqliteCommand(Queries.AddHP(Global.CharacterSetter.Item5, Global.CharacterSetter.Item4, Global.CharacterSetter.Item3, Convert.ToString(Global.CharacterSetter.Item3.Last())), Program.sqliteConnection);
+                    command.ExecuteNonQuery();
+
+                    Global.CharacterSetter.Item1.ModifyAsync(message =>
+                    {
+                        EmbedBuilder builder = new EmbedBuilder
+                        {
+                            Title = Global.CharacterSetter.Item4,
+                            Color = Color.Default,
+                            Description =
+                                "Здоровье и Оружие персонажа установлены\nНе забудьте установить навыки и талант"
+                        };
+                        message.Embed = builder.Build();
+                    });
+                    Global.CharacterSetter.Item1.UpdateAsync();
+                    Global.CharacterSetter = (null, 0, null, null, 0);
+                    break;
+            }
+            return Task.CompletedTask;
+        }
+
+        [Command("damage")]
+        public async Task Damage(string name, int damage)
+        {
+            await Check();
+            Hero character = new Hero();
+            int curHP = 0;
+            int maxHP = 0;
+
+            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.sqliteConnection);
+
+            using (SqliteDataReader reader = getHero.ExecuteReader())
+            {
+                if (reader.HasRows)
+                {
+                    foreach (DbDataRecord record in reader)
+                    {
+                        character = new Hero
+                        {
+                            name = Convert.ToString(record["CHAR_NAME"]),
+                            owner = Convert.ToUInt64(record["CHAR_OWNER"]),
+                        };
+                        curHP = Convert.ToInt32(record["CHAR_CURHP"]);
+                        maxHP = Convert.ToInt32(Convert.ToString(record["CHAR_HP"])[2].ToString());
+                    }
+                }
+                else
+                {
+                    await Context.Channel.SendMessageAsync(Language(19));
+                    return;
+                }
+            }
+
+            curHP -= damage;
+
+            if (damage > 0)
+            {
+                if (curHP <= 0)
+                {
+                    curHP = 0;
+                    await Context.Channel.SendMessageAsync("> Персонаж тяжело ранен и не может далее вести бой");
+                }
+                else
+                {
+                    await Context.Channel.SendMessageAsync($"> Персонаж потерял {damage} единиц здоровья");
+                }
+            }
+            else
+            {
+                if (curHP > maxHP)
+                {
+                    curHP = maxHP;
+                    await Context.Channel.SendMessageAsync("> Персонаж полностью излечен");
+                }
+                else
+                {
+                    await Context.Channel.SendMessageAsync($"> Персонаж излечил {damage * -1} единиц здоровья");
+                }
+            }
+
+            SqliteCommand command = new SqliteCommand(Queries.DamageChar(Context.Guild.Id, name, curHP), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        [Command("heal")]
+        public async Task Heal(string name, int damage)
+        {
+            await Damage(name, damage * -1);
+        }
         #endregion
     }
 }

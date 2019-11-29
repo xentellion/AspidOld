@@ -7,7 +7,7 @@
             return 
                 $"CREATE TABLE GUILD_{id} (U_ID BIGINT NOT NULL PRIMARY KEY, ISMUITED BOOL DEFAULT FALSE, MUTETIME INT DEFAULT 0, ISPUNISHED BOOL DEFAULT FALSE, PUNISHTIME INT DEFAULT 0); " +
 
-                $"CREATE TABLE RP_{id} (CHAR_NAME TEXT NOT NULL UNIQUE, CHAR_OWNER BIGINT NOT NULL REFERENCES GUILD_{id} (U_ID) ON UPDATE CASCADE, DESCRIPTION TEXT DEFAULT 'NO', CHAR_IMAGE TEXT)";
+                $"CREATE TABLE RP_{id} (CHAR_NAME TEXT NOT NULL UNIQUE, CHAR_OWNER BIGINT NOT NULL REFERENCES GUILD_{id} (U_ID) ON UPDATE CASCADE, DESCRIPTION TEXT DEFAULT 'NO', CHAR_IMAGE TEXT, CHAR_HP TEXT, CHAR_CURHP INT, CHAR_SKILLS TEXT, CHAR_TALENTS TEXT)";
         }
 
         #region Users
@@ -110,6 +110,27 @@
         public static string GetAllCharacters(ulong guild)
         {
             return $"SELECT * FROM RP_{guild}";
+        }
+        #endregion
+
+        #region Skills
+
+        public static string AddHP(ulong guild, string name, string hp, string curhp)
+        {
+            return $"UPDATE RP_{guild} SET CHAR_HP = '{hp}', CHAR_CURHP = '{curhp}' WHERE CHAR_NAME = '{name}'";
+        }
+        public static string AddSkills(ulong guild, string name, string skills)
+        {
+            return $"UPDATE RP_{guild} SET CHAR_SKILLS = '{skills}' WHERE CHAR_NAME = '{name}'";
+        }
+        public static string AddTalent(ulong guild, string name, string talent)
+        {
+            return $"UPDATE RP_{guild} SET CHAR_TALENTS = '{talent}' WHERE CHAR_NAME = '{name}'";
+        }
+
+        public static string DamageChar(ulong guild, string name, int hp)
+        {
+            return $"UPDATE RP_{guild} SET CHAR_CURHP = '{hp}' WHERE CHAR_NAME = '{name}'";
         }
         #endregion
     }
