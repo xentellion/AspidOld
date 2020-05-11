@@ -1,8 +1,10 @@
 ﻿using Discord;
+using Discord.WebSocket;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
 
@@ -14,7 +16,7 @@ namespace Aspid.Modules
 
         const int hour1 = 21;
         const int hour2 = 9;
-        
+
         const int minute = 0;
         
         static bool canSend = true;
@@ -46,6 +48,28 @@ namespace Aspid.Modules
                 builder.WithTitle("Напоминание").WithColor(Color.Red)
                     .WithImageUrl("https://media.discordapp.net/attachments/614108079545647105/614108112730718249/primal_aspid.jpg?width=676&height=474");
                 Global.channel.SendMessageAsync("", false, builder.Build());
+
+                IEnumerable<SocketGuild> guilds = Program._client.Guilds;
+                foreach (SocketGuild guild in guilds)
+                {
+                    var role = guild.Roles.FirstOrDefault(x => x.Name == "Dead");
+                    var users = guild.Users;
+                    int counter = 0;
+                    foreach (SocketGuildUser a in users)
+                    {
+                        var roles = a.Roles;
+                        var isDead = from b in roles
+                                     where b.Name == "Dead"
+                                     select b;
+                        var c = isDead.FirstOrDefault();
+                        if (c != null)
+                        {
+                            (a as IGuildUser).RemoveRoleAsync(role);
+                            counter++;
+                        }
+                    }   
+                }
+                Config.SaveDead();
             }
             if (!canSend && (DateTime.UtcNow.Hour == hour1 + 1 || DateTime.UtcNow.Hour == hour2 + 1)) canSend = true;
         }
@@ -54,11 +78,11 @@ namespace Aspid.Modules
         {
             foreach (Discord.WebSocket.SocketGuild guild in Program._client.Guilds)
             {
-                SqliteCommand reduceMute = new SqliteCommand(Queries.PenaltyHandler(guild.Id), Program.sqliteConnection);
+                SqliteCommand reduceMute = new SqliteCommand(Queries.PenaltyHandler(guild.Id), Program.timerSqliteConnection);
                 reduceMute.ExecuteNonQuery();
 
-                dePunish = new SqliteCommand(Queries.GetPunished(guild.Id), Program.sqliteConnection);
-                deMute = new SqliteCommand(Queries.GetMuted(guild.Id), Program.sqliteConnection);
+                dePunish = new SqliteCommand(Queries.GetPunished(guild.Id), Program.timerSqliteConnection);
+                deMute = new SqliteCommand(Queries.GetMuted(guild.Id), Program.timerSqliteConnection);
 
                 List<ulong> DePunished = new List<ulong>();
                 List<ulong> DeMuted = new List<ulong>();
@@ -67,11 +91,14 @@ namespace Aspid.Modules
 
                 using (SqliteDataReader reader = dePunish.ExecuteReader())
                 {
-                    foreach(DbDataRecord record in reader)
+                    if (reader.HasRows)
                     {
-                        ulong a = Convert.ToUInt64(record["U_ID"]);
-                        DePunished.Add(a);
-                        await Ping.RemoveMute(guild.Id, a, "Punished");
+                        foreach (DbDataRecord record in reader)
+                        {
+                            ulong a = Convert.ToUInt64(record["U_ID"]);
+                            DePunished.Add(a);
+                            await Ping.RemoveMute(guild.Id, a, "Punished");
+                        }
                     }
                     reader.Close();
                 }
@@ -81,7 +108,7 @@ namespace Aspid.Modules
                     SqliteCommand dePun;
                     foreach(ulong unit in DePunished)
                     {
-                        dePun = new SqliteCommand(Queries.RemovePunish(guild.Id, unit), Program.sqliteConnection);
+                        dePun = new SqliteCommand(Queries.RemovePunish(guild.Id, unit), Program.timerSqliteConnection);
                         dePun.ExecuteNonQuery();
                     }
                 }
@@ -92,11 +119,14 @@ namespace Aspid.Modules
 
                 using (SqliteDataReader reader = deMute.ExecuteReader())
                 {
-                    foreach (DbDataRecord record in reader)
+                    if (reader.HasRows)
                     {
-                        ulong a = Convert.ToUInt64(record["U_ID"]);
-                        DeMuted.Add(a);
-                        await Ping.RemoveMute(guild.Id, a, "Muted");
+                        foreach (DbDataRecord record in reader)
+                        {
+                            ulong a = Convert.ToUInt64(record["U_ID"]);
+                            DeMuted.Add(a);
+                            await Ping.RemoveMute(guild.Id, a, "Muted");
+                        }
                     }
                     reader.Close();
                 }
@@ -106,11 +136,10 @@ namespace Aspid.Modules
                     SqliteCommand dePun;
                     foreach (ulong unit in DeMuted)
                     {
-                        dePun = new SqliteCommand(Queries.RemoveMute(guild.Id, unit), Program.sqliteConnection);
+                        dePun = new SqliteCommand(Queries.RemoveMute(guild.Id, unit), Program.timerSqliteConnection);
                         dePun.ExecuteNonQuery();
                     }
                 }
-
                 #endregion
             }
         }

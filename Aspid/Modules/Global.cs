@@ -15,9 +15,8 @@ namespace Aspid.Modules
         internal static List<SocketMessage> shooter = new List<SocketMessage>();
 
         internal static (Discord.Rest.RestUserMessage, string) HelpHandler { get; set; }
-        internal static (Discord.Rest.RestUserMessage, int, string, string, ulong) CharacterSetter;
         /////////////////settled message/////////////state//record//name//guild
-        internal static IEnumerable<Discord.IMessage> Messages { get; set; }
+        internal static IEnumerable<IMessage> Messages { get; set; }
 
         internal static OverwritePermissions permissions = new OverwritePermissions(PermValue.Inherit, PermValue.Inherit, PermValue.Deny, PermValue.Inherit, PermValue.Deny, PermValue.Deny);
     }

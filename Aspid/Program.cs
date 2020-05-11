@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Aspid
@@ -14,8 +15,10 @@ namespace Aspid
         CommandHandler _handler;
 
         internal static string connectionString = Config.connectionString;
+        internal static string timerConnectionString = connectionString;
         internal static SqliteConnection sqliteConnection;
-      
+        internal static SqliteConnection timerSqliteConnection;
+
         static void Main(string[] args) => new Program().StartAsync().GetAwaiter().GetResult();
 
         public async Task StartAsync()
@@ -23,20 +26,29 @@ namespace Aspid
             if (Config.bot.token == "" || Config.bot.token == null)
             {
                 Console.WriteLine("Configuration file is empty or does not exist");
-                System.Threading.Thread.Sleep(5000);
+                Thread.Sleep(5000);
                 return;
             }
 
             _client = new DiscordSocketClient(new DiscordSocketConfig
             {
-                LogLevel = Discord.LogSeverity.Verbose
+                LogLevel = LogSeverity.Verbose
             });
+
+            if (!System.IO.File.Exists(Config.configPath + Config.mydb))
+                System.IO.File.Create(Config.configPath + Config.mydb);
 
             sqliteConnection = new SqliteConnection
             {
                 ConnectionString = Config.connectionString
             };
             sqliteConnection.Open();
+
+            timerSqliteConnection = new SqliteConnection
+            {
+                ConnectionString = timerConnectionString
+            };
+            timerSqliteConnection.Open();
 
             _client.Log += Log;
 
@@ -81,6 +93,8 @@ namespace Aspid
                     SqliteCommand addTable = new SqliteCommand(Queries.CreateTable(guild.Id), sqliteConnection);
                     addTable.ExecuteNonQuery();
                 }
+
+                guild.DownloadUsersAsync();
 
                 foreach(SocketGuildUser user in guild.Users)
                 {
@@ -216,11 +230,6 @@ namespace Aspid
                         Modules.Global.HelpHandler.Item1.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
                         Modules.Ping.Turn(reaction.Emote.Name);
                     }
-                }
-
-                if (Modules.Global.CharacterSetter.Item1 != null && reaction.MessageId == Modules.Global.CharacterSetter.Item1.Id)
-                {
-                    Modules.Ping.NextPage(reaction.Emote.Name, Modules.Global.CharacterSetter.Item2);
                 }
             }
             return Task.CompletedTask;

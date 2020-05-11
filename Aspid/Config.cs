@@ -13,15 +13,36 @@ namespace Aspid
         public int deadPeople;
     }
 
+    public class Hero
+    {
+        public string name { get; set; }
+
+        public ulong owner { get; set; }
+
+        public string image { get; set; }
+
+        public string level { get; set; }
+
+        public string bio { get; set; }
+
+        public string inv { get; set; }
+
+        public string intellect { get; set; }
+
+        public string magic { get; set; }
+
+        public string nature { get; set; }
+    }
+
     class Config
     {
         static string LinuxFolder { get; } = "/home/xentellion/Aspid/Data";
         static string WindowsFolder { get; } = $"{System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments)}/Xentellion/Aspid";
 
-        static string configPath;
+        internal static string configPath;
 
         const string configFile = "Load.json";
-        const string mydb = "AspidDataBase.db";
+        internal const string mydb = "AspidDataBase.db";
 
         static internal string connectionString;
 

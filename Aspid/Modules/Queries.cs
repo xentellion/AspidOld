@@ -1,4 +1,6 @@
-﻿namespace Aspid
+﻿using System;
+
+namespace Aspid
 {
     class Queries
     {
@@ -7,7 +9,7 @@
             return 
                 $"CREATE TABLE GUILD_{id} (U_ID BIGINT NOT NULL PRIMARY KEY, ISMUITED BOOL DEFAULT FALSE, MUTETIME INT DEFAULT 0, ISPUNISHED BOOL DEFAULT FALSE, PUNISHTIME INT DEFAULT 0); " +
 
-                $"CREATE TABLE RP_{id} (CHAR_NAME TEXT NOT NULL UNIQUE, CHAR_OWNER BIGINT NOT NULL REFERENCES GUILD_{id} (U_ID) ON UPDATE CASCADE, DESCRIPTION TEXT DEFAULT 'NO', CHAR_IMAGE TEXT, CHAR_HP TEXT, CHAR_CURHP INT, CHAR_SKILLS TEXT, CHAR_TALENTS TEXT)";
+                $"CREATE TABLE RP_{id} (CHAR_NAME TEXT NOT NULL UNIQUE, CHAR_OWNER BIGINT NOT NULL REFERENCES GUILD_{id} (U_ID) ON UPDATE CASCADE, CHAR_IMAGE TEXT, CHAR_LEVEL TEXT, CHAR_BIO TEXT, CHAR_INV TEXT, CHAR_INT TEXT, CHAR_MAG TEXT, CHAR_NAT TEXT, CHAR_GALLERY TEXT, CHAR_NICKNAME TEXT)";
         }
 
         #region Users
@@ -77,14 +79,14 @@
 
         #region Roleplay
 
-        public static string AddChar(ulong guild, string name, ulong dude, string description)
+        public static string AddChar(ulong guild, string name, ulong dude, string level, string description, string inventory)
         {
-            return $"INSERT INTO RP_{guild} (CHAR_NAME, CHAR_OWNER, DESCRIPTION) VALUES('{name}', {dude}, '{description}');";
+            return $"INSERT INTO RP_{guild} (CHAR_NAME, CHAR_OWNER, CHAR_IMAGE, CHAR_LEVEL, CHAR_BIO, CHAR_INV, CHAR_NICKNAME) VALUES('{name}', {dude}, '{"https://media.discordapp.net/attachments/708001747842498623/708762818719252480/111.png?width=475&height=475"}', '{level}', '{description}', '{inventory}', '{name}');";
         }
 
-        public static string ChangeDescription(ulong guild, string name, string description)
+        public static string ChangeNickname(ulong guild, string name, string description)
         {
-            return $"UPDATE RP_{guild} SET DESCRIPTION = '{description}' WHERE CHAR_NAME = '{name}'";
+            return $"UPDATE RP_{guild} SET CHAR_NICKNAME = '{description}' WHERE CHAR_NAME = '{name}'";
         }
 
         public static string ChangeImage(ulong guild, string name, string description)
@@ -113,25 +115,44 @@
         }
         #endregion
 
-        #region Skills
-
-        public static string AddHP(ulong guild, string name, string hp, string curhp)
+        internal static string UpdateInt(ulong id, string name, string info)
         {
-            return $"UPDATE RP_{guild} SET CHAR_HP = '{hp}', CHAR_CURHP = '{curhp}' WHERE CHAR_NAME = '{name}'";
-        }
-        public static string AddSkills(ulong guild, string name, string skills)
-        {
-            return $"UPDATE RP_{guild} SET CHAR_SKILLS = '{skills}' WHERE CHAR_NAME = '{name}'";
-        }
-        public static string AddTalent(ulong guild, string name, string talent)
-        {
-            return $"UPDATE RP_{guild} SET CHAR_TALENTS = '{talent}' WHERE CHAR_NAME = '{name}'";
+            return $"UPDATE RP_{id} SET CHAR_INT = '{info}' WHERE CHAR_NAME = '{name}'";
         }
 
-        public static string DamageChar(ulong guild, string name, int hp)
+        internal static string UpdateMag(ulong id, string name, string info)
         {
-            return $"UPDATE RP_{guild} SET CHAR_CURHP = '{hp}' WHERE CHAR_NAME = '{name}'";
+            return $"UPDATE RP_{id} SET CHAR_MAG = '{info}' WHERE CHAR_NAME = '{name}'";
         }
-        #endregion
+
+        internal static string UpdateNat(ulong id, string name, string info)
+        {
+            return $"UPDATE RP_{id} SET CHAR_NAT = '{info}' WHERE CHAR_NAME = '{name}'";
+        }
+
+        internal static string UpdateBio(ulong id, string name, string info)
+        {
+            return $"UPDATE RP_{id} SET CHAR_BIO = '{info}' WHERE CHAR_NAME = '{name}'";
+        }
+
+        internal static string UpdateInv(ulong id, string name, string info)
+        {
+            return $"UPDATE RP_{id} SET CHAR_INV = '{info}' WHERE CHAR_NAME = '{name}'";
+        }
+
+        internal static string UpdateLevel(ulong id, string name, string info)
+        {
+            return $"UPDATE RP_{id} SET CHAR_LEVEL = '{info}' WHERE CHAR_NAME = '{name}'";
+        }
+
+        internal static string GetImage(ulong id, string name)
+        {
+            return $"SELECT CHAR_GALLERY FROM RP_{ id } WHERE CHAR_NAME = '{name}'";
+        }
+
+        internal static string AddImage(ulong id, string name, string info)
+        {
+            return $"UPDATE RP_{id} SET CHAR_GALLERY = '{info}' WHERE CHAR_NAME = '{name}'";
+        }
     }
 }

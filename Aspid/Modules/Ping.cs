@@ -14,6 +14,7 @@ namespace Aspid.Modules
 {
     public class Ping : ModuleBase<SocketCommandContext>
     {
+        #region Useful methods
         public async Task Emotion(string emotion)
         {
             Emote emote = Emote.Parse(emotion);
@@ -38,6 +39,28 @@ namespace Aspid.Modules
                 default:        return Languages.English.texts[id];    
             }
         }
+
+        public string EnterRepacer(string line)
+        {
+            string a = line.Replace((char)10, '|');
+            a = a.Replace("|", "<br>");
+            return a;
+        }
+
+        private static string Tr(string str)
+        {
+            string[] lat_up = { "A", "B", "V", "G", "D", "E", "Yo", "Zh", "Z", "I", "Y", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "F", "Kh", "Ts", "Ch", "Sh", "Shch", "\"", "Y", "'", "E", "Yu", "Ya" };
+            string[] lat_low = { "a", "b", "v", "g", "d", "e", "yo", "zh", "z", "i", "y", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "kh", "ts", "ch", "sh", "shch", "\"", "y", "'", "e", "yu", "ya" };
+            string[] rus_up = { "А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я" };
+            string[] rus_low = { "а", "б", "в", "г", "д", "е", "ё", "ж", "з", "и", "й", "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц", "ч", "ш", "щ", "ъ", "ы", "ь", "э", "ю", "я" };
+            for (int i = 0; i <= 32; i++)
+            {
+                str = str.Replace(rus_up[i], lat_up[i]);
+                str = str.Replace(rus_low[i], lat_low[i]);
+            }
+            return str;
+        }
+        #endregion
 
         #region Shoot
 
@@ -171,6 +194,7 @@ namespace Aspid.Modules
                     counter++;
                 }
             }
+            Config.SaveDead();
             await Context.Channel.SendMessageAsync(">>> " + counter + Language(15) + Config.bot.deadPeople + Language(16), false);
         }
 
@@ -184,7 +208,7 @@ namespace Aspid.Modules
             SqliteCommand command = new SqliteCommand(Queries.AddPunish(Context.Guild.Id, user.Id), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
-            await (user as IGuildUser).AddRoleAsync(role);
+            try { await (user as IGuildUser).AddRoleAsync(role); } catch { Console.WriteLine("Cannot add role"); }
 
             await Context.Channel.SendMessageAsync(Language(17) + user.Mention + Language(18), false);
         }
@@ -197,43 +221,15 @@ namespace Aspid.Modules
         public async Task GetCharacter(string name)
         {
             await Check();
-            Hero character = new Hero();
+            if (!System.IO.Directory.Exists(Config.configPath + Context.Guild.Id.ToString()))
+                System.IO.Directory.CreateDirectory(Config.configPath + Context.Guild.Id.ToString());
 
-            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.sqliteConnection);
-
-            using (SqliteDataReader reader = getHero.ExecuteReader())
+            if (!System.IO.File.Exists($"{Config.configPath + Context.Guild.Id.ToString() + "/" + Tr(name)}.png"))
             {
-                if (reader.HasRows)
-                {
-                    foreach (DbDataRecord record in reader)
-                    {
-                        character = new Hero
-                        {
-                            name = Convert.ToString(record["CHAR_NAME"]),
-                            owner = Convert.ToUInt64(record["CHAR_OWNER"]),
-                            description = Convert.ToString(record["DESCRIPTION"]),
-                            image = Convert.ToString(record["CHAR_IMAGE"]),
-                        };
-                    }
-                }
-                else
-                {
-                    await Context.Channel.SendMessageAsync(Language(19));
-                    return;
-                }
+                Console.WriteLine($"{Config.configPath + Context.Guild.Id.ToString() + "/" + Tr(name)}.png");
+                Update(name, Context.Guild.Id);
             }
-
-            EmbedBuilder builder = new EmbedBuilder();
-            SocketUser user = Context.Guild.GetUser(character.owner);
-            builder
-                .WithColor(Color.DarkBlue)
-                .WithTitle(character.name)
-                .WithDescription(character.description + Language(20) + user.Mention);
-            if (character.image != null)
-            {
-                builder.WithImageUrl(character.image);
-            }
-            await Context.Channel.SendMessageAsync("", false, builder.Build());
+            await Context.Channel.SendFileAsync($"{Config.configPath + Context.Guild.Id.ToString() + "/" + Tr(name)}.png");
         }
 
         [Command("hero")]
@@ -244,7 +240,6 @@ namespace Aspid.Modules
             List<Hero> characters = new List<Hero>();
 
             SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, user.Id), Program.sqliteConnection);
-
             using (SqliteDataReader reader = getHero.ExecuteReader())
             {
                 if (reader.HasRows)
@@ -254,9 +249,6 @@ namespace Aspid.Modules
                         characters.Add(new Hero
                         {
                             name = Convert.ToString(record["CHAR_NAME"]),
-                            owner = Convert.ToUInt64(record["CHAR_OWNER"]),
-                            description = Convert.ToString(record["DESCRIPTION"]),
-                            image = Convert.ToString(record["CHAR_IMAGE"]),
                         });
                     }
                 }
@@ -265,21 +257,12 @@ namespace Aspid.Modules
                     await Context.Channel.SendMessageAsync(Language(21));
                     return;
                 }
+                reader.Close();
             }
 
             if(characters.Count == 1)
             {
-                EmbedBuilder builder = new EmbedBuilder();
-                SocketUser guy = Context.Guild.GetUser(characters[0].owner);
-                builder
-                    .WithColor(Color.DarkBlue)
-                    .WithTitle(characters[0].name)
-                    .WithDescription(characters[0].description + Language(20) + user.Mention);
-                if (characters[0].image != null)
-                {
-                    builder.WithImageUrl(characters[0].image);
-                }
-                await Context.Channel.SendMessageAsync("", false, builder.Build());
+                await Context.Channel.SendFileAsync($"{characters[0].name}.png");
             }
             else
             {
@@ -299,33 +282,154 @@ namespace Aspid.Modules
             }
         }
 
+        void Update(string name, ulong id)
+        {
+            Hero character = new Hero();
+
+            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(id, name), Program.sqliteConnection);
+
+            using (SqliteDataReader reader = getHero.ExecuteReader())
+            {
+                if (reader.HasRows)
+                {
+                    foreach (DbDataRecord record in reader)
+                    {
+                        character = new Hero
+                        {
+                            name = Convert.ToString(record["CHAR_NAME"]),
+                            owner = Convert.ToUInt64(record["CHAR_OWNER"]),
+                            image = Convert.ToString(record["CHAR_IMAGE"]),
+                            level = Convert.ToString(record["CHAR_LEVEL"]),
+                            bio = Convert.ToString(record["CHAR_BIO"]),
+                            inv = Convert.ToString(record["CHAR_INV"]),
+                            intellect = Convert.ToString(record["CHAR_INT"]),
+                            magic = Convert.ToString(record["CHAR_MAG"]),
+                            nature = Convert.ToString(record["CHAR_NAT"])
+                        };
+                    }
+                }
+                else
+                {
+                    reader.Close();
+                    return;
+                }
+                reader.Close();
+            }
+
+            string a = Fields.part1 + character.name +
+                        Fields.part2 + character.image +
+                        Fields.part3 + Fields.SetLevels(character.level) +
+                        Fields.part5 + EnterRepacer(character.bio) + 
+                        Fields.part6 + EnterRepacer(character.inv) +
+                        Fields.part7;
+
+            if (character.intellect != null)
+                a += EnterRepacer(character.intellect);
+            a += Fields.part8;
+
+            if (character.magic != null)
+                a += EnterRepacer(character.magic);
+            a += Fields.part9;
+
+            if (character.nature != null)
+                a += EnterRepacer(character.nature);
+            a += Fields.part10;
+
+            var converter = new HtmlConverter();
+            var bytes = converter.FromHtmlString(a, 770, ImageFormat.Png, 100);
+            System.IO.File.WriteAllBytes($"{Config.configPath + Context.Guild.Id.ToString() + "/" + Tr(character.name)}.png", bytes);
+        }
+
         [Command("add")]
         [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task AddCharacter(string name, SocketUser owner, [Remainder] string info)
+        public async Task AddCharacter(string name, SocketUser owner, string level, [Remainder] string info)
         {
-            SqliteCommand command = new SqliteCommand(Queries.AddChar(Context.Guild.Id, name, owner.Id, info), Program.sqliteConnection);
+            string[] data = info.Split("|");
+
+            SqliteCommand command = new SqliteCommand(Queries.AddChar(Context.Guild.Id, name, owner.Id, level, data[0], data[1]), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await Context.Channel.DeleteMessageAsync(Context.Message);
 
-            EmbedBuilder builder = new EmbedBuilder////
-            {
-                Title = name,
-                Color = Color.Default,
-                Description =
-                Language(23) + name + Language(24) + "\n\n" +
-               "Выберите основное оружие персонажа\n" +
-               "0 - безоружен\n" +
-               "1 - легкое\n" +
-               "2 - среднее\n" +
-               "3 - тяжелое"
-            };
-            RestUserMessage message = await Context.Channel.SendMessageAsync("", false, builder.Build());
+            string a = Fields.part1 + name + Fields.part2 + "https://media.discordapp.net/attachments/708001747842498623/708762818719252480/111.png?width=475&height=475" + Fields.part3 + Fields.SetLevels(level)+ Fields.part5 + EnterRepacer(data[0]) + Fields.part6 + EnterRepacer(data[1]) + Fields.part7 + Fields.part8 + Fields.part9 + Fields.part10;
 
-            Emoji[] emojis = { new Emoji("0️⃣"), new Emoji("1️⃣"), new Emoji("2️⃣"), new Emoji("3️⃣") };
-            await message.AddReactionsAsync(emojis);
+            var converter = new HtmlConverter();
+            var bytes = converter.FromHtmlString(a, 770, ImageFormat.Png, 100);
+            System.IO.File.WriteAllBytes($"{Config.configPath + "/" + Context.Guild.Id.ToString() + "/" + Tr(name)}.png", bytes);
 
-            Global.CharacterSetter = (message, 0, "", name, Context.Guild.Id);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(24));
+        }
+
+        [Command("updateInt")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task UpdateIntellect(string name, [Remainder] string info)
+        {
+            SqliteCommand command = new SqliteCommand(Queries.UpdateInt(Context.Guild.Id, name, info), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+            Update(name, Context.Guild.Id);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
+        }
+
+        [Command("updateMag")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task UpdateMagic(string name, [Remainder] string info)
+        {
+            SqliteCommand command = new SqliteCommand(Queries.UpdateMag(Context.Guild.Id, name, info), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+            Update(name, Context.Guild.Id);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
+        }
+
+        [Command("updateNat")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task UpdateNature(string name, [Remainder] string info)
+        {
+            SqliteCommand command = new SqliteCommand(Queries.UpdateNat(Context.Guild.Id, name, info), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+            Update(name, Context.Guild.Id);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
+        }
+
+        [Command("updateBio")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task UpdateBio(string name, [Remainder] string info)
+        {
+            SqliteCommand command = new SqliteCommand(Queries.UpdateBio(Context.Guild.Id, name, info), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+            Update(name, Context.Guild.Id);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
+        }
+
+        [Command("updateInv")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task UpdateInventory(string name, [Remainder] string info)
+        {
+            SqliteCommand command = new SqliteCommand(Queries.UpdateInv(Context.Guild.Id, name, info), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+            Update(name, Context.Guild.Id);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
+        }
+
+        [Command("updateLevel")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task AddCharacterData(string name, [Remainder] string info)
+        {
+            SqliteCommand command = new SqliteCommand(Queries.UpdateLevel(Context.Guild.Id, name, info), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+            Update(name, Context.Guild.Id);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
         }
 
         [Command("delete")]
@@ -334,27 +438,228 @@ namespace Aspid.Modules
         {
             SqliteCommand command = new SqliteCommand(Queries.DeleteChar(Context.Guild.Id, name), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
-
+            System.IO.File.Delete($"{Config.configPath + "/" + Context.Guild.Id.ToString() + "/" + name}.png");
             await Context.Channel.DeleteMessageAsync(Context.Message);
             await Context.Channel.SendMessageAsync(Language(23) + name + Language(25));
         }
 
-        [Command("update")]
+        [Command("icon")]
         [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task UpdateCharacter(string name, [Remainder] string info)
+        public async Task PicCharacter(string name, string info)
         {
-            SqliteCommand command = new SqliteCommand(Queries.ChangeDescription(Context.Guild.Id, name, info), Program.sqliteConnection);
+            SqliteCommand command = new SqliteCommand(Queries.ChangeImage(Context.Guild.Id, name, info), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+            Update(name, Context.Guild.Id);
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
+        }
+
+        [Command("gallery")]
+        public async Task AddImage(string name)
+        {
+            SqliteCommand getHero = new SqliteCommand(Queries.GetImage(Context.Guild.Id, name), Program.sqliteConnection);
+            string a = "";
+            using (SqliteDataReader reader = getHero.ExecuteReader())
+            {
+                if (reader.HasRows)
+                {
+                    foreach (DbDataRecord record in reader)
+                    {
+                        a += Convert.ToString(record["CHAR_GALLERY"]);
+                    }
+                }
+                else
+                {
+                    reader.Close();
+                    await Context.Channel.DeleteMessageAsync(Context.Message);
+                    return;
+                }
+                reader.Close();
+            }
+
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+
+            string[] b = a.Split('|');
+
+            for(int i = 0; i < b.Count(); i++)
+            {
+                if (b[i].Length < 5)
+                    continue;
+                EmbedBuilder builder = new EmbedBuilder
+                {
+                    Title = name + " " + i.ToString(),
+                    Color = Color.DarkBlue,
+                    ImageUrl = b[i]
+                };
+                await Context.Channel.SendMessageAsync("", false, builder.Build());
+            }
+        }
+
+        [Command("tweet")]
+        public async Task Tweet(string name, [Remainder]string text)
+        {
+            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.sqliteConnection);
+            string a = "";
+            string add = "";
+            string n = "";
+            using (SqliteDataReader reader = getHero.ExecuteReader())
+            {
+                if (reader.HasRows)
+                {
+                    foreach (DbDataRecord record in reader)
+                    {
+                        if(Convert.ToUInt64(record["CHAR_OWNER"]) != Context.User.Id)
+                        {
+                            await Context.Message.DeleteAsync();
+                            reader.Close();
+                            return;
+                        }
+                        a = Convert.ToString(record["CHAR_IMAGE"]);
+                        add += Convert.ToString(record["CHAR_LEVEL"])[0];
+                        add += Convert.ToString(record["CHAR_LEVEL"])[1];
+                        n += Convert.ToString(record["CHAR_NICKNAME"]);
+                    }
+                }
+                else
+                {
+                    reader.Close();
+                    await Context.Channel.DeleteMessageAsync(Context.Message);
+                    return;
+                }
+                reader.Close();
+            }
+
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+
+            EmbedBuilder builder = new EmbedBuilder
+            {
+                Title = $"**{n}** *@{Tr(name).ToLower() + add }*",
+                ThumbnailUrl = a,
+                Description = text,
+                Color = Color.DarkBlue,
+            };
+            builder.WithCurrentTimestamp();
+            RestUserMessage messa = await Context.Channel.SendMessageAsync("", false, builder.Build());
+
+            Emoji[] emojis1 = { new Emoji("💙") };
+            await messa.AddReactionsAsync(emojis1);
+        }
+
+        [Command("nick")]
+        public async Task ChanheNickname(string name, [Remainder]string text)
+        {
+            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.sqliteConnection);
+            using (SqliteDataReader reader = getHero.ExecuteReader())
+            {
+                if (reader.HasRows)
+                {
+                    foreach (DbDataRecord record in reader)
+                    {
+                        if (Convert.ToUInt64(record["CHAR_OWNER"]) != Context.User.Id)
+                        {
+                            await Context.Message.DeleteAsync();
+                            reader.Close();
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    reader.Close();
+                    await Context.Channel.DeleteMessageAsync(Context.Message);
+                    return;
+                }
+                reader.Close();
+            }
+
+            SqliteCommand command = new SqliteCommand(Queries.ChangeNickname(Context.Guild.Id, name, text), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await Context.Channel.DeleteMessageAsync(Context.Message);
             await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
         }
 
-        [Command("image")]
-        [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task PicCharacter(string name, string info)
+        [Command("addImage")]
+        public async Task AddImage(string name, string info)
         {
-            SqliteCommand command = new SqliteCommand(Queries.ChangeImage(Context.Guild.Id, name, info), Program.sqliteConnection);
+            SqliteCommand getHero = new SqliteCommand(Queries.GetImage(Context.Guild.Id, name), Program.sqliteConnection);
+            string a = "";
+            using (SqliteDataReader reader = getHero.ExecuteReader())
+            {
+                if (reader.HasRows)
+                {
+                    foreach (DbDataRecord record in reader)
+                    {
+                        if (Convert.ToUInt64(record["CHAR_OWNER"]) != Context.User.Id)
+                        {
+                            reader.Close();
+                            await Context.Channel.DeleteMessageAsync(Context.Message);
+                            return;
+                        }
+                        a += Convert.ToString(record["CHAR_GALLERY"]);
+                    }
+                }
+                else
+                {
+                    await Context.Channel.DeleteMessageAsync(Context.Message);
+                    reader.Close();
+                    return;
+                }
+                reader.Close();
+            }
+
+            SqliteCommand command = new SqliteCommand(Queries.ChangeImage(Context.Guild.Id, name, a), Program.sqliteConnection);
+            await command.ExecuteNonQueryAsync();
+            Update(name, Context.Guild.Id);
+            await Context.Channel.DeleteMessageAsync(Context.Message);
+            await Context.Channel.SendMessageAsync(Language(23) + name + Language(26));
+        }
+
+        [Command("deleteImage")]
+        public async Task DeleteImage(string name, int info)
+        {
+            SqliteCommand getHero = new SqliteCommand(Queries.GetImage(Context.Guild.Id, name), Program.sqliteConnection);
+            string a = "";
+            using (SqliteDataReader reader = getHero.ExecuteReader())
+            {
+                if (reader.HasRows)
+                {
+                    foreach (DbDataRecord record in reader)
+                    {
+                        if (Convert.ToUInt64(record["CHAR_OWNER"]) != Context.User.Id)
+                        {
+                            reader.Close();
+                            await Context.Channel.DeleteMessageAsync(Context.Message);
+                            return;
+                        }
+                        a += Convert.ToString(record["CHAR_GALLERY"]);
+                    }
+                }
+                else
+                {
+                    await Context.Channel.DeleteMessageAsync(Context.Message);
+                    reader.Close();
+                    return;
+                }
+                reader.Close();
+            }
+
+            string[] b = a.Split('|');
+
+            string c = "";
+
+            for (int i = 0; i < b.Count(); i++)
+            {
+                if (i == info || b[i].Length < 5)
+                    continue;
+                else
+                {
+                    c += " | ";
+                    c += b[i];
+                }
+            }
+
+            SqliteCommand command = new SqliteCommand(Queries.AddImage(Context.Guild.Id, name, c), Program.sqliteConnection);
             await command.ExecuteNonQueryAsync();
 
             await Context.Channel.DeleteMessageAsync(Context.Message);
@@ -387,6 +692,7 @@ namespace Aspid.Modules
                     await Context.Channel.SendMessageAsync(Language(27));
                     return;
                 }
+                reader.Close();
             }
 
             characters.Sort((x, y) => string.Compare(x.name, y.name));
@@ -608,7 +914,7 @@ namespace Aspid.Modules
             EmbedBuilder builder = new EmbedBuilder();
             builder.WithTitle(Language(34))
                 .WithColor(Color.DarkGreen)
-                .WithDescription("https://discordapp.com/oauth2/authorize?&client_id=581221797295554571&scope=bot&permissions=1345846480")
+                .WithDescription("https://discordapp.com/oauth2/authorize?&client_id=581221797295554571&scope=bot&permissions=8")
                 .WithThumbnailUrl("https://media.discordapp.net/attachments/603600328117583874/615150515210420249/primal_aspid_king.gif");
             await ls.SendMessageAsync("", false, builder.Build());
 
@@ -715,15 +1021,31 @@ namespace Aspid.Modules
 
             EmbedBuilder builder = new EmbedBuilder();
             builder
-                .WithTitle("ATTENCION")
+                .WithTitle("ATTENTION")
                 .WithColor(Color.Default)
                 .WithDescription(text);
 
             IEnumerable<SocketGuild> guilds = Program._client.Guilds;
             foreach (SocketGuild guild in guilds)
             {
-                await guild.DefaultChannel.SendMessageAsync("", false, builder.Build());
+                try
+                {
+                    await guild.DefaultChannel.SendMessageAsync("", false, builder.Build());
+                }
+                catch 
+                {
+                    Console.WriteLine("Cannot send to " + guild.Name);
+                }
             }
+            await Context.Message.DeleteAsync();
+        }
+
+        [Command("pick")]
+        public async Task Pick([Remainder]string text)
+        {
+            string[] words = text.Split('|');
+            Random random = new Random();
+            await Context.Channel.SendMessageAsync(words[random.Next(0, words.Count())]);
         }
 
         #endregion
@@ -767,7 +1089,7 @@ namespace Aspid.Modules
             new EmbedBuilder()
             .WithTitle(Language(49))
             .WithColor(Color.DarkGreen)
-            .WithImageUrl("https://media.discordapp.net/attachments/603600328117583874/615150516388757509/image0-5.png")
+            .WithImageUrl("https://media.discordapp.net/attachments/614108079545647105/709052808124432497/AspidOnRepair.gif")
             .Build());
 
             try
@@ -846,7 +1168,7 @@ namespace Aspid.Modules
             SocketGuild guild = Program._client.GetGuild(guildId);
             var role = guild.Roles.FirstOrDefault(x => x.Name == roleName);
             SocketGuildUser user = guild.GetUser(id);
-            await (user as IGuildUser).RemoveRoleAsync(role);
+            try { await (user as IGuildUser).RemoveRoleAsync(role); } catch { Console.WriteLine("Cannot remove role in" + guild.Name); }
         }
 
         #endregion
@@ -975,314 +1297,6 @@ namespace Aspid.Modules
             await Context.Channel.SendMessageAsync(Context.User.Mention + " " + answers[i]);
         }
 
-        #endregion
-
-        #region AdvancedRP
-
-        [Command("skills")]
-        [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task AddSkills(string name, [Remainder] string skill)
-        {
-            string[] words = skill.Split(new char[] { '|',',' });
-            if (words.Length != 6) 
-                return;
-
-            SqliteCommand command = new SqliteCommand(Queries.AddSkills(Context.Guild.Id, name, skill), Program.sqliteConnection);
-            await command.ExecuteNonQueryAsync();
-            await Context.Channel.SendMessageAsync("Навыки распределены");
-        }
-
-        [Command("talent")]
-        [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task AddTalent(string name, [Remainder] string skill)
-        {
-            string[] words = skill.Split(new char[] { '|' });
-            if (words.Length != 2) 
-                return;
-            SqliteCommand command = new SqliteCommand(Queries.AddTalent(Context.Guild.Id, name, skill), Program.sqliteConnection);
-            await command.ExecuteNonQueryAsync();
-
-            await Context.Channel.SendMessageAsync("Талант распределен");
-        }
-
-        class Stats
-        {
-            internal string name { get; set; }
-            internal string stats { get; set; }
-            internal string talent { get; set; }
-            internal string hp { get; set; }
-            internal int currentHp { get; set; }
-            internal string image { get; set; }
-        };
-
-        [Command("stats")]
-        public async Task GetStats(string name)
-        {
-            Stats stats = new Stats();
-
-            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.sqliteConnection);
-
-            using (SqliteDataReader reader = getHero.ExecuteReader())
-            {
-                if (reader.HasRows)
-                {
-                    foreach (DbDataRecord record in reader)
-                    {
-                        stats = new Stats
-                        {
-                            name = Convert.ToString(record["CHAR_NAME"]),
-                            stats = Convert.ToString(record["CHAR_SKILLS"]),
-                            talent = Convert.ToString(record["CHAR_TALENTS"]),
-                            hp = Convert.ToString(record["CHAR_HP"]),
-                            currentHp = Convert.ToInt32(record["CHAR_CURHP"]),
-                            image = Convert.ToString(record["CHAR_IMAGE"])
-                        };
-                    }
-                }
-                else
-                {
-                    await Context.Channel.SendMessageAsync(Language(19));
-                    return;
-                }
-            }
-
-            string[] words = stats.stats.Split(new char[] { '|',',' });
-            if (words.Length != 6)
-                return;
-
-            string[] talent = stats.talent.Split(new char[] { '|', ',' });
-            if (talent.Length != 2)
-                return;
-
-            string rs = "<:red:650103765042593812>";
-            string gs = "<:green:650103747904667648>";
-
-            string res = "";
-
-            int HP = Convert.ToInt32(stats.hp[2].ToString());
-
-            for (int i = 0; i < stats.currentHp; i++)
-            {
-                res += gs;
-            }
-            for (int i = 0; i < HP - stats.currentHp; i++)
-            {
-                res += rs;
-            }
-
-            string a1 = $"Урон Основным оружием - {stats.hp[0]}";
-            string a2 = "";
-
-            if (Convert.ToInt32(stats.hp[1].ToString()) > 0)
-                a2 = $"Урон Вспомогательным оружием - { stats.hp[1]}";
-
-            EmbedBuilder builder = new EmbedBuilder();
-            builder
-                .WithTitle(stats.name)
-                .WithDescription($"Здоровье - {res}\n\n{a1}\n{a2}")
-                .WithColor(Color.DarkBlue)
-                .WithThumbnailUrl(stats.image);
-
-                builder.AddField(x =>
-                {
-                    x.Name = $"**{talent[0]}**";
-                    x.Value = talent[1];
-                });
-
-            for(int i = 0; i < 6; i+=2)
-            {
-                builder.AddField(x =>
-                {
-                    x.Name = $"**{words[i]}**";
-                    x.Value = words[i+1];
-                    x.IsInline = true;
-                });
-            }
-
-            await Context.Channel.SendMessageAsync("", false, builder.Build());
-        }
-
-        public static Task NextPage(string emojie, int state)
-        {
-            switch (state)
-            {
-                case 0:
-                    switch (emojie)
-                    {
-                        case "0️⃣":
-                            Global.CharacterSetter.Item3 += 0; break;
-                        case "1️⃣":
-                            Global.CharacterSetter.Item3 += 1; break;
-                        case "2️⃣":
-                            Global.CharacterSetter.Item3 += 2; break;
-                        case "3️⃣":
-                            Global.CharacterSetter.Item3 += 3; break;
-                        default:
-                            return Task.CompletedTask;
-                    }
-                    Global.CharacterSetter.Item1.RemoveAllReactionsAsync();
-
-                    Global.CharacterSetter.Item2++;
-
-                    Global.CharacterSetter.Item1.ModifyAsync(message =>
-                    {
-                        EmbedBuilder builder = new EmbedBuilder////
-                        {
-                            Title = Global.CharacterSetter.Item4,
-                            Color = Color.Default,
-                            Description =
-                            "Выберите второстепенное оружие персонажа\n" +
-                            "0 - отсутствует\n" +
-                            "1 - легкое\n" +
-                            "2 - среднее\n"
-                        };
-                        message.Embed = builder.Build();
-                    });
-                    Global.CharacterSetter.Item1.UpdateAsync();
-
-                    Emoji[] emojis = { new Emoji("0️⃣"), new Emoji("1️⃣"), new Emoji("2️⃣")};
-                    Global.CharacterSetter.Item1.AddReactionsAsync(emojis);
-                    break;
-                case 1:
-                    switch (emojie)
-                    {
-                        case "0️⃣":
-                            Global.CharacterSetter.Item3 += 0; break;
-                        case "1️⃣":
-                            Global.CharacterSetter.Item3 += 1; break;
-                        case "2️⃣":
-                            Global.CharacterSetter.Item3 += 2; break;
-                        default:
-                            return Task.CompletedTask;
-                    }
-                    Global.CharacterSetter.Item1.RemoveAllReactionsAsync();
-
-                    Global.CharacterSetter.Item2++;
-
-                    Global.CharacterSetter.Item1.ModifyAsync(message =>
-                    {
-                        EmbedBuilder builder = new EmbedBuilder
-                        {
-                            Title = Global.CharacterSetter.Item4,
-                            Color = Color.Default,
-                            Description =
-                                "Выберите количество здоровья персонажа\n"
-                        };
-                        message.Embed = builder.Build();
-                    });
-                    Global.CharacterSetter.Item1.UpdateAsync();
-
-                    Emoji[] emojis1 = { new Emoji("3️⃣"), new Emoji("5️⃣"), new Emoji("7️⃣") };
-                    Global.CharacterSetter.Item1.AddReactionsAsync(emojis1);
-                    break;
-
-                case 2:
-                    switch (emojie)
-                    {
-                        case "3️⃣":
-                            Global.CharacterSetter.Item3 += 3;
-                            break;
-                        case "5️⃣":
-                            Global.CharacterSetter.Item3 += 5;
-                            break;
-                        case "7️⃣":
-                            Global.CharacterSetter.Item3 += 7;
-                            break;
-                        default:
-                            return Task.CompletedTask;
-                    }
-                    Global.CharacterSetter.Item1.RemoveAllReactionsAsync();
-                    Global.CharacterSetter.Item2++;
-
-                    SqliteCommand command = new SqliteCommand(Queries.AddHP(Global.CharacterSetter.Item5, Global.CharacterSetter.Item4, Global.CharacterSetter.Item3, Convert.ToString(Global.CharacterSetter.Item3.Last())), Program.sqliteConnection);
-                    command.ExecuteNonQuery();
-
-                    Global.CharacterSetter.Item1.ModifyAsync(message =>
-                    {
-                        EmbedBuilder builder = new EmbedBuilder
-                        {
-                            Title = Global.CharacterSetter.Item4,
-                            Color = Color.Default,
-                            Description =
-                                "Здоровье и Оружие персонажа установлены\nНе забудьте установить навыки и талант"
-                        };
-                        message.Embed = builder.Build();
-                    });
-                    Global.CharacterSetter.Item1.UpdateAsync();
-                    Global.CharacterSetter = (null, 0, null, null, 0);
-                    break;
-            }
-            return Task.CompletedTask;
-        }
-
-        [Command("damage")]
-        public async Task Damage(string name, int damage)
-        {
-            await Check();
-            Hero character = new Hero();
-            int curHP = 0;
-            int maxHP = 0;
-
-            SqliteCommand getHero = new SqliteCommand(Queries.GetCharacter(Context.Guild.Id, name), Program.sqliteConnection);
-
-            using (SqliteDataReader reader = getHero.ExecuteReader())
-            {
-                if (reader.HasRows)
-                {
-                    foreach (DbDataRecord record in reader)
-                    {
-                        character = new Hero
-                        {
-                            name = Convert.ToString(record["CHAR_NAME"]),
-                            owner = Convert.ToUInt64(record["CHAR_OWNER"]),
-                        };
-                        curHP = Convert.ToInt32(record["CHAR_CURHP"]);
-                        maxHP = Convert.ToInt32(Convert.ToString(record["CHAR_HP"])[2].ToString());
-                    }
-                }
-                else
-                {
-                    await Context.Channel.SendMessageAsync(Language(19));
-                    return;
-                }
-            }
-
-            curHP -= damage;
-
-            if (damage > 0)
-            {
-                if (curHP <= 0)
-                {
-                    curHP = 0;
-                    await Context.Channel.SendMessageAsync("> Персонаж тяжело ранен и не может далее вести бой");
-                }
-                else
-                {
-                    await Context.Channel.SendMessageAsync($"> Персонаж потерял {damage} единиц здоровья");
-                }
-            }
-            else
-            {
-                if (curHP > maxHP)
-                {
-                    curHP = maxHP;
-                    await Context.Channel.SendMessageAsync("> Персонаж полностью излечен");
-                }
-                else
-                {
-                    await Context.Channel.SendMessageAsync($"> Персонаж излечил {damage * -1} единиц здоровья");
-                }
-            }
-
-            SqliteCommand command = new SqliteCommand(Queries.DamageChar(Context.Guild.Id, name, curHP), Program.sqliteConnection);
-            await command.ExecuteNonQueryAsync();
-        }
-
-        [Command("heal")]
-        public async Task Heal(string name, int damage)
-        {
-            await Damage(name, damage * -1);
-        }
         #endregion
     }
 }
